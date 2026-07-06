@@ -272,6 +272,7 @@ with tab1:
         value=st.session_state["selected_smiles"],
         placeholder="CCO",
         help=t("single_help", lang),
+        max_chars=2000,
     )
 
     chips_cols = st.columns(4)
@@ -338,8 +339,8 @@ with tab1:
                             is_class = "Class" in key
                             pct_val = _prop_to_pct(key, result)
                             bg_color = color_class(str(val)) if is_class else "#1a5276"
-                            display = f"{val:.3f}" if isinstance(val, float) else str(val)
-                            label = translate_prop_name(key, lang)
+                            display = html.escape(f"{val:.3f}" if isinstance(val, float) else str(val))
+                            label = html.escape(translate_prop_name(key, lang))
                             progress = (
                                 f'<div class="progress-bg"><div class="progress-fill" '
                                 f'style="width:{pct_val}%;background:{bg_color}"></div></div>'
@@ -370,7 +371,7 @@ with tab1:
             if st.download_button(
                 t("pdf_download", lang),
                 data=generate_pdf(smiles, result, lang),
-                file_name=f"admetox_{smiles[:20]}.pdf".replace("/", "_"),
+                file_name=f"admetox_{re.sub(r'[^\w\-]', '_', smiles[:20])}.pdf",
                 mime="application/pdf",
             ):
                 pass
@@ -409,12 +410,12 @@ with tab2:
                 if col in df.columns:
                     df[col] = df[col].apply(
                         lambda v, c=col: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{translate_class(str(v), lang)}</span>'
+                        f'{html.escape(translate_class(str(v), lang))}</span>'
                     )
                     df = df.rename(columns={col: translate_prop_name(col, lang)})
             df_to_show = df.copy()
-            if "SMILES" in df_to_show.columns:
-                df_to_show["SMILES"] = df_to_show["SMILES"].apply(html.escape)
+            for col in df_to_show.select_dtypes(include="object").columns:
+                df_to_show[col] = df_to_show[col].apply(html.escape)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 t("batch_download", lang), df.to_csv(index=False).encode("utf-8"),
@@ -425,10 +426,13 @@ with tab2:
             t("batch_uploader", lang), type=["csv"],
         )
         if uploaded_file is not None:
+            if uploaded_file.type not in ("text/csv", "application/vnd.ms-excel", ""):
+                st.error("Only CSV files are accepted.")
+                st.stop()
             if uploaded_file.size > MAX_UPLOAD_MB * 1024 * 1024:
                 st.error(t("batch_error_size", lang, n=MAX_UPLOAD_MB))
                 st.stop()
-            raw_bytes = uploaded_file.read()
+            raw_bytes = uploaded_file.read(1024 * 1024)
             try:
                 raw_text = raw_bytes.decode("utf-8")
             except UnicodeDecodeError:
@@ -437,11 +441,8 @@ with tab2:
             if "\x00" in raw_text:
                 st.error("File contains invalid null bytes.")
                 st.stop()
-            if len(raw_bytes) > MAX_UPLOAD_MB * 1024 * 1024:
-                st.error(t("batch_error_size", lang, n=MAX_UPLOAD_MB))
-                st.stop()
             uploaded_file.seek(0)
-            df_input = pd.read_csv(uploaded_file)
+            df_input = pd.read_csv(uploaded_file, nrows=1000, engine="c")
             if df_input.shape[1] > 100:
                 st.error("CSV has too many columns (max 100).")
                 st.stop()
@@ -460,12 +461,12 @@ with tab2:
                 if col in df_output.columns:
                     df_output[col] = df_output[col].apply(
                         lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{translate_class(str(v), lang)}</span>'
+                        f'{html.escape(translate_class(str(v), lang))}</span>'
                     )
                     df_output = df_output.rename(columns={col: translate_prop_name(col, lang)})
             df_to_show = df_output.copy()
-            if "SMILES" in df_to_show.columns:
-                df_to_show["SMILES"] = df_to_show["SMILES"].apply(html.escape)
+            for col in df_to_show.select_dtypes(include="object").columns:
+                df_to_show[col] = df_to_show[col].apply(html.escape)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 t("batch_download", lang), df_output.to_csv(index=False).encode("utf-8"),
@@ -492,14 +493,14 @@ with tab3:
                 if col in df_display.columns:
                     df_display[col] = df_display[col].apply(
                         lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{translate_class(str(v), lang)}</span>'
+                        f'{html.escape(translate_class(str(v), lang))}</span>'
                     )
                     df_display = df_display.rename(columns={col: translate_prop_name(col, lang)})
             rename_map = {k: translate_prop_name(k, lang) for k in df_display.columns if k != "Drug"}
             df_display = df_display.rename(columns=rename_map)
             df_to_show = df_display.copy()
-            if "Drug" in df_to_show.columns:
-                df_to_show["Drug"] = df_to_show["Drug"].apply(html.escape)
+            for col in df_to_show.select_dtypes(include="object").columns:
+                df_to_show[col] = df_to_show[col].apply(html.escape)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.subheader("Summary" if lang == "en" else "Сводка")
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)

@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Path as PathParam, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -46,7 +46,7 @@ from src.predict import ADMETPredictor
 from src.features import canonicalize_smiles
 from src.config import VALIDATION_DRUGS, MODELS_DIR, logger
 from src.auth import register_user, authenticate_user, verify_token as verify_jwt_token
-from src.usage import log_prediction, get_stats
+from src.usage import log_prediction, log_predictions_batch, get_stats
 from src.pdf_report import generate_pdf
 from api.schemas import (
     PredictRequest, PredictResponse, PropertyResult,
@@ -216,29 +216,31 @@ def predict_batch(request: Request, req: BatchPredictRequest, _: None = Depends(
 
     results = []
     failed = 0
+    records = []
     username = getattr(request.state, "user", None)
     for smi in req.smiles:
         t0 = time.time()
         r = _do_predict(smi)
         latency = (time.time() - t0) * 1000
-        log_prediction(
-            username=username,
-            smiles=smi,
-            canonical_smiles=r.canonical_smiles,
-            properties={p.name: p.value for p in r.properties} if r.properties else None,
-            error=r.error,
-            latency_ms=latency,
-        )
+        records.append({
+            "username": username,
+            "smiles": smi,
+            "canonical_smiles": r.canonical_smiles,
+            "properties": {p.name: p.value for p in r.properties} if r.properties else None,
+            "error": r.error,
+            "latency_ms": latency,
+        })
         results.append(r)
         if r.error:
             failed += 1
 
+    log_predictions_batch(records)
     return BatchPredictResponse(results=results, total=n, failed=failed)
 
 
-@app.get("/predict/{smiles:path}/pdf", tags=["Prediction"])
+@app.get("/predict/{smiles}/pdf", tags=["Prediction"])
 @limiter.limit("10/minute")
-def predict_pdf(request: Request, smiles: str, lang: str = "ru", _: None = Depends(verify_api_key)):
+def predict_pdf(request: Request, smiles: str = PathParam(min_length=1, max_length=10000), lang: str = Query(default="ru", pattern="^(ru|en)$"), _: None = Depends(verify_api_key)):
     t0 = time.time()
     result = _do_predict(smiles)
     latency = (time.time() - t0) * 1000
@@ -288,13 +290,14 @@ def login(request: Request, req: LoginRequest):
 
 
 @app.get("/admin/usage", response_model=UsageStatsResponse, tags=["Admin"])
-def admin_usage(days: int = 7, _: None = Depends(verify_api_key)):
+def admin_usage(days: int = Query(default=7, ge=1, le=365), _: None = Depends(verify_api_key)):
     stats = get_stats(days)
     return UsageStatsResponse(**stats)
 
 
 @app.get("/validate", response_model=list[PredictResponse], tags=["Prediction"])
-def predict_validation():
+@limiter.limit("5/minute")
+def predict_validation(request: Request):
     results = []
     for name, smi in VALIDATION_DRUGS.items():
         r = _do_predict(smi)

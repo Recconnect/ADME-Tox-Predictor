@@ -39,13 +39,13 @@ class HealthResponse(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_]+$")
+    password: str = Field(min_length=8, max_length=128)
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class AuthResponse(BaseModel):

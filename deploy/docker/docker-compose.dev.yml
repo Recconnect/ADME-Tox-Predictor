@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  dev:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/dev.Dockerfile
+      target: dev
+    runtime: runc
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    volumes:
+      - ../../..:/workspace/adme_proto
+      - ../../../../data/models:/workspace/models
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      - ROCR_VISIBLE_DEVICES=0
+      - HIP_VISIBLE_DEVICES=0
+      - PYTORCH_ROCM_ARCH=gfx1030
+      - MIOPEN_FIND_ENFORCE=4
+      - MIOPEN_DEBUG_CONV_GEMM=0
+    shm_size: 32gb
+    stdin_open: true
+    tty: true
+
+  dev-cpu:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/dev.Dockerfile
+      target: dev
+    volumes:
+      - ../../..:/workspace/adme_proto
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+    shm_size: 8gb
+    stdin_open: true
+    tty: true

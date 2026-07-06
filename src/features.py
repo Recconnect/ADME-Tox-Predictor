@@ -6,6 +6,7 @@ from rdkit.Chem import Descriptors, rdMolDescriptors, AllChem
 from src.config import logger, FINGERPRINT_PARAMS
 
 
+@functools.lru_cache(maxsize=65536)
 def canonicalize_smiles(smiles: str) -> str | None:
     if not smiles or not smiles.strip():
         return None

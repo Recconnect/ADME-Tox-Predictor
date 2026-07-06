@@ -1,0 +1,13 @@
+{
+  "solubility": {"r2": 0.826, "rmse": 0.72, "timestamp": "2026-07-06"},
+  "caco2": {"auc": 0.884, "acc": 0.83, "timestamp": "2026-07-06"},
+  "herg": {"auc": 0.873, "acc": 0.803, "timestamp": "2026-07-06"},
+  "lipophilicity": {"r2": 0.815, "rmse": 0.68, "timestamp": "2026-07-06"},
+  "pgp": {"auc": 0.912, "acc": 0.852, "timestamp": "2026-07-06"},
+  "cyp3a4": {"auc": 0.934, "acc": 0.874, "timestamp": "2026-07-06"},
+  "cyp2d6": {"auc": 0.945, "acc": 0.891, "timestamp": "2026-07-06"},
+  "ames": {"auc": 0.921, "acc": 0.863, "timestamp": "2026-07-06"},
+  "bioavailability": {"auc": 0.856, "acc": 0.785, "timestamp": "2026-07-06"},
+  "ppbr": {"r2": 0.742, "rmse": 0.15, "timestamp": "2026-07-06"},
+  "herg_expanded": {"auc": 0.918, "acc": 0.847, "timestamp": "2026-07-06"}
+}

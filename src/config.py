@@ -32,6 +32,17 @@ PRIMARY_DATASETS = [
     "cyp3a4", "cyp2d6", "ames", "bioavailability", "ppbr",
 ]
 
+ALL_DATASETS = PRIMARY_DATASETS + [
+    "cyp2c9", "cyp2c19", "cyp2d6_substrate", "cyp3a4_substrate",
+    "logd74", "fraction_unbound", "mdck", "caco2_regression",
+    "half_life", "ddi",
+    "tox21_ahr", "tox21_ar", "tox21_ar_ltk", "tox21_aromatase",
+    "tox21_er", "tox21_er_ltk", "tox21_hse", "tox21_mmgx",
+    "tox21_p53", "tox21_pparg", "tox21_aromatase2", "tox21_fish",
+    "clintox", "sider", "ld50", "skin_sensitization",
+    "eye_irritation", "herg_mutation",
+]
+
 TDC_INFO = {
     "solubility": {"name": "AqSolDB", "task": "regression"},
     "caco2": {"name": "Caco2_Wang", "task": "classification"},
@@ -43,6 +54,21 @@ TDC_INFO = {
     "ames": {"name": "Ames", "task": "classification"},
     "bioavailability": {"name": "Bioavailability_Ma", "task": "classification"},
     "ppbr": {"name": "PPBR_AZ", "task": "regression"},
+    "cyp2c9": {"name": "CYP2C9_Veith", "task": "classification"},
+    "cyp2c19": {"name": "CYP2C19_Veith", "task": "classification"},
+    "cyp2d6_substrate": {"name": "CYP2D6_Substrate", "task": "classification"},
+    "cyp3a4_substrate": {"name": "CYP3A4_Substrate", "task": "classification"},
+    "logd74": {"name": "logD7.4", "task": "regression"},
+    "fraction_unbound": {"name": "FractionUnbound", "task": "regression"},
+    "mdck": {"name": "MDCK", "task": "classification"},
+    "caco2_regression": {"name": "Caco2_Wang", "task": "regression"},
+    "half_life": {"name": "HalfLife", "task": "regression"},
+    "ddi": {"name": "DDI", "task": "classification"},
+    "ld50": {"name": "LD50", "task": "regression"},
+    "skin_sensitization": {"name": "SkinSens", "task": "classification"},
+    "eye_irritation": {"name": "EyeIrr", "task": "classification"},
+    "clintox": {"name": "ClinTox", "task": "classification"},
+    "sider": {"name": "SIDER", "task": "classification"},
 }
 
 CACO2_THRESHOLD = -5.5

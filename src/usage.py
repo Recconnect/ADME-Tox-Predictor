@@ -3,10 +3,25 @@ import time
 import json
 import os
 import stat
+import threading
+import numpy as np
 from pathlib import Path
 from datetime import datetime
 
+_lock = threading.Lock()
+
 _DB_PATH = Path(__file__).resolve().parents[1] / "usage.db"
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, (np.ndarray,)):
+            return obj.tolist()
+        return super().default(obj)
 
 
 def _set_private_perms(path: Path):
@@ -56,33 +71,70 @@ def log_prediction(
     error: str | None,
     latency_ms: float,
 ):
-    conn = _get_conn()
-    conn.execute(
-        "INSERT INTO predictions (username, smiles, canonical_smiles, timestamp, properties, error, latency_ms) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (
-            username,
-            smiles,
-            canonical_smiles,
-            time.time(),
-            json.dumps(properties, ensure_ascii=False) if properties else None,
-            error,
-            latency_ms,
-        ),
-    )
-    conn.commit()
-    conn.close()
+    with _lock:
+        conn = _get_conn()
+        conn.execute(
+            "INSERT INTO predictions (username, smiles, canonical_smiles, timestamp, properties, error, latency_ms) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                username,
+                smiles,
+                canonical_smiles,
+                time.time(),
+                json.dumps(properties, ensure_ascii=False, cls=NumpyEncoder) if properties else None,
+                error,
+                latency_ms,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+
+def log_predictions_batch(records: list[dict]) -> None:
+    if not records:
+        return
+    with _lock:
+        conn = _get_conn()
+        now = time.time()
+        rows = []
+        for r in records:
+            rows.append((
+                r.get("username"),
+                r["smiles"],
+                r.get("canonical_smiles"),
+                now,
+                json.dumps(r.get("properties"), ensure_ascii=False, cls=NumpyEncoder) if r.get("properties") else None,
+                r.get("error"),
+                r.get("latency_ms"),
+            ))
+        conn.executemany(
+            "INSERT INTO predictions (username, smiles, canonical_smiles, timestamp, properties, error, latency_ms) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+        conn.close()
 
 
 def get_stats(days: int = 7) -> dict:
     conn = _get_conn()
     cutoff = time.time() - days * 86400
-    total = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
-    total_7d = conn.execute("SELECT COUNT(*) FROM predictions WHERE timestamp >= ?", (cutoff,)).fetchone()[0]
-    errors = conn.execute("SELECT COUNT(*) FROM predictions WHERE error IS NOT NULL").fetchone()[0]
-    unique_users = conn.execute("SELECT COUNT(DISTINCT username) FROM predictions WHERE username IS NOT NULL").fetchone()[0]
-    unique_smiles = conn.execute("SELECT COUNT(DISTINCT smiles) FROM predictions").fetchone()[0]
-    avg_latency = conn.execute("SELECT AVG(latency_ms) FROM predictions WHERE latency_ms IS NOT NULL").fetchone()[0]
+    row = conn.execute("""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN timestamp >= ? THEN 1 ELSE 0 END) AS total_7d,
+            SUM(CASE WHEN error IS NOT NULL THEN 1 ELSE 0 END) AS errors,
+            COUNT(DISTINCT CASE WHEN username IS NOT NULL THEN username END) AS unique_users,
+            COUNT(DISTINCT smiles) AS unique_smiles,
+            AVG(CASE WHEN latency_ms IS NOT NULL THEN latency_ms END) AS avg_latency
+        FROM predictions
+    """, (cutoff,)).fetchone()
+    total = row["total"]
+    total_7d = row["total_7d"]
+    errors = row["errors"]
+    unique_users = row["unique_users"]
+    unique_smiles = row["unique_smiles"]
+    avg_latency = row["avg_latency"]
 
     top_users = conn.execute(
         "SELECT username, COUNT(*) as cnt FROM predictions WHERE username IS NOT NULL "

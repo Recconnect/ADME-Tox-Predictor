@@ -1,7 +1,21 @@
 from pathlib import Path
+from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
+
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+try:
+    import dgl
+    DGL_AVAILABLE = True
+except ImportError:
+    DGL_AVAILABLE = False
 
 from src.features import (
     compute_all_features,
@@ -14,38 +28,24 @@ from src.features import (
 from src.feature_importance import get_model_feature_importance
 from src.models import load_model
 from src.config import MODELS_DIR, logger, MAX_BATCH_SIZE
+from src.endpoints import ENDPOINTS, LEGACY_KEYS
 
-
-_REGRESSION_CONFIGS = [
-    ("solubility", "Solubility (logS)", lambda v: {"SolubilityClass": "Soluble" if v > -4 else "Poorly soluble"}),
-    ("lipophilicity", "Lipophilicity (logD)", lambda v: None),
-    ("ppbr", "PPB (plasma binding)", lambda v: {"PPB Class": "Highly bound (>90%)" if v > 90 else "Moderately bound (50-90%)" if v > 50 else "Weakly bound (<50%)"}),
-]
-
-_CLASSIFICATION_CONFIGS = [
-    ("caco2", "Caco-2 Permeability", lambda v: {"Caco-2 Class": "High permeability" if v > 0.5 else "Low permeability"}),
-    ("herg", "hERG Toxicity Risk", lambda v: {"hERG Class": "Toxic (high risk)" if v > 0.5 else "Safe (low risk)"}),
-    ("pgp", "P-gp Inhibition", lambda v: {"P-gp Class": "Inhibitor (high risk)" if v > 0.5 else "Non-inhibitor (low risk)"}),
-    ("cyp3a4", "CYP3A4 Inhibition", lambda v: {"CYP3A4 Class": "Inhibitor" if v > 0.5 else "Non-inhibitor"}),
-    ("cyp2d6", "CYP2D6 Inhibition", lambda v: {"CYP2D6 Class": "Inhibitor" if v > 0.5 else "Non-inhibitor"}),
-    ("ames", "Ames Mutagenicity", lambda v: {"Ames Class": "Mutagenic (positive)" if v > 0.5 else "Non-mutagenic (negative)"}),
-    ("bioavailability", "Bioavailability", lambda v: {"Bioavailability Class": "High" if v > 0.5 else "Low"}),
-]
+HYBRID_MODEL_PATH = MODELS_DIR / "hybrid_model.pt"
 
 
 class ADMETPredictor:
     def __init__(self):
         self._models: dict[str, object] = {}
         self._model_paths: dict[str, Path] = {}
+        self._hybrid_model = None
+        self._hybrid_device = None
         self._scan_model_files()
+        self._try_load_hybrid()
         self._expected_dim = feature_dimension() if self._model_paths else None
         logger.info("Found %d model files, expected feature dim: %s", len(self._model_paths), self._expected_dim)
 
     def _scan_model_files(self):
-        model_keys = [
-            "solubility", "caco2", "herg", "lipophilicity", "pgp",
-            "cyp3a4", "cyp2d6", "ames", "bioavailability", "ppbr",
-        ]
+        model_keys = list(LEGACY_KEYS)
         herg_prefer = MODELS_DIR / "herg_model_expanded.pkl"
         herg_fallback = MODELS_DIR / "herg_model.pkl"
 
@@ -59,6 +59,37 @@ class ADMETPredictor:
             else:
                 logger.warning("Model %s not found at %s", key, path)
 
+    def _try_load_hybrid(self):
+        if not HYBRID_MODEL_PATH.exists():
+            logger.info("No hybrid model found at %s, using LightGBM only", HYBRID_MODEL_PATH)
+            return
+        try:
+            if not DGL_AVAILABLE or not TORCH_AVAILABLE:
+                logger.warning("DGL or torch not installed, cannot load hybrid model")
+                return
+            import torch
+            from src.hybrid_model import HybridMultiTask
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            checkpoint = torch.load(HYBRID_MODEL_PATH, map_location=device, weights_only=True)
+            model = HybridMultiTask(
+                desc_dim=checkpoint["desc_dim"],
+                task_names=checkpoint["task_keys"],
+                task_types=checkpoint["task_types"],
+                node_feat_dim=checkpoint["node_feat_dim"],
+                edge_feat_dim=checkpoint["edge_feat_dim"],
+            ).to(device)
+            model.load_state_dict(checkpoint["model_state_dict"])
+            model.eval()
+            self._hybrid_model = model
+            self._hybrid_device = device
+            logger.info("Hybrid model loaded on %s", device)
+        except Exception as e:
+            logger.warning("Failed to load hybrid model: %s", e)
+
+    @property
+    def hybrid_available(self) -> bool:
+        return self._hybrid_model is not None
+
     def _get_model(self, key: str):
         if key not in self._models:
             path = self._model_paths.get(key)
@@ -70,7 +101,7 @@ class ADMETPredictor:
 
     @property
     def is_ready(self) -> bool:
-        return len(self._model_paths) >= 5
+        return len(self._model_paths) >= 5 or self.hybrid_available
 
     @property
     def models(self) -> dict:
@@ -97,6 +128,58 @@ class ADMETPredictor:
             )
         return feat
 
+    @staticmethod
+    def _extract_descriptors(feat: np.ndarray) -> dict:
+        from src.features import get_descriptor_names
+        desc_names = get_descriptor_names()
+        n_desc = len(desc_names)
+        return dict(zip(desc_names, feat[:n_desc].tolist()))
+
+    def _predict_hybrid(self, smiles: str, canon: str) -> dict:
+        import torch
+        from src.gnn_features import mol_to_graph
+        feat = compute_all_features(canon)
+        if feat is None:
+            return {"error": f"Could not compute features for: {smiles}"}
+        desc_tensor = torch.tensor(feat, dtype=torch.float32, device=self._hybrid_device).unsqueeze(0)
+        g = mol_to_graph(canon)
+        if g is None:
+            return None
+        g = g.to(self._hybrid_device)
+        h = g.ndata["h"]
+        e = g.edata.get("e")
+        with torch.no_grad():
+            if hasattr(self._hybrid_model, 'task_names'):
+                outputs = self._hybrid_model(g, h, e, desc_tensor)
+            else:
+                outputs = {"default": self._hybrid_model(g, h, e, desc_tensor)}
+        results = {"SMILES": canon}
+        if hasattr(self._hybrid_model, 'task_names'):
+            for task_key in self._hybrid_model.task_names:
+                cfg = ENDPOINTS.get(task_key)
+                if cfg is None:
+                    continue
+                label = cfg["name"]
+                raw = outputs[task_key].squeeze(-1).item()
+                if cfg["task"] == "classification":
+                    prob = float(torch.sigmoid(torch.tensor(raw)))
+                    results[label] = round(prob, 3)
+                    classify_fn = cfg.get("classify")
+                    if classify_fn:
+                        extra = classify_fn(prob)
+                        if extra:
+                            results.update(extra)
+                else:
+                    results[label] = round(raw, 3)
+                    classify_fn = cfg.get("classify")
+                    if classify_fn:
+                        extra = classify_fn(raw)
+                        if extra:
+                            results.update(extra)
+        desc = self._extract_descriptors(feat)
+        results.update(desc)
+        return results
+
     def predict_single(self, smiles: str) -> dict:
         if not self.is_ready:
             return {"error": "Models not loaded. Train models first."}
@@ -105,33 +188,45 @@ class ADMETPredictor:
         canon = canonicalize_smiles(smiles)
         if canon is None:
             return {"error": f"Invalid SMILES: {smiles}"}
+
+        if self.hybrid_available:
+            try:
+                result = self._predict_hybrid(smiles, canon)
+                if result is not None:
+                    return result
+            except Exception as e:
+                logger.warning("Hybrid prediction failed, falling back to LightGBM: %s", e)
+
         feat = compute_all_features(canon)
         if feat is None:
             return {"error": f"Could not compute features for: {smiles}"}
         feat_2d = self._validate_feature(feat.reshape(1, -1))
         results = {"SMILES": canon}
 
-        for key, label, class_fn in _CLASSIFICATION_CONFIGS:
-            if key in self._model_paths:
-                model = self._get_model(key)
+        for key in self._model_paths:
+            cfg = ENDPOINTS.get(key)
+            if cfg is None:
+                continue
+            model = self._get_model(key)
+            if cfg["task"] == "classification":
                 prob = float(model.predict_proba(feat_2d)[0, 1])
-                results[label] = round(prob, 3)
-                extra = class_fn(prob)
-                if extra:
-                    results.update(extra)
-
-        for key, label, extra_fn in _REGRESSION_CONFIGS:
-            if key in self._model_paths:
-                model = self._get_model(key)
+                results[cfg["name"]] = round(prob, 3)
+                classify_fn = cfg.get("classify")
+                if classify_fn:
+                    extra = classify_fn(prob)
+                    if extra:
+                        results.update(extra)
+            else:
                 val = float(model.predict(feat_2d)[0])
-                results[label] = round(val, 3) if key != "ppbr" else round(val, 1)
-                extra = extra_fn(val)
-                if extra:
-                    results.update(extra)
+                results[cfg["name"]] = round(val, 3) if key != "ppbr" else round(val, 1)
+                classify_fn = cfg.get("classify")
+                if classify_fn:
+                    extra = classify_fn(val)
+                    if extra:
+                        results.update(extra)
 
-        desc = compute_rdkit_descriptors(canon)
-        if desc:
-            results.update(desc)
+        desc = self._extract_descriptors(feat)
+        results.update(desc)
         return results
 
     def predict_batch(self, smiles_list: list[str]) -> list[dict]:
@@ -144,7 +239,74 @@ class ADMETPredictor:
                 len(smiles_list), MAX_BATCH_SIZE,
             )
             smiles_list = smiles_list[:MAX_BATCH_SIZE]
-        return [self.predict_single(smi) for smi in smiles_list]
+
+        canon_list: list[str] = []
+        valid_indices: list[int] = []
+        for i, smi in enumerate(smiles_list):
+            canon = canonicalize_smiles(smi)
+            if canon is not None:
+                canon_list.append(canon)
+                valid_indices.append(i)
+
+        if not canon_list:
+            return [{"error": "No valid SMILES"}] if len(smiles_list) == 0 else [{"error": f"Invalid SMILES: {s}"} for s in smiles_list]
+
+        feat_list: list[np.ndarray | None] = [None] * len(canon_list)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            fut_map = {pool.submit(compute_all_features, c): i for i, c in enumerate(canon_list)}
+            for fut in as_completed(fut_map):
+                idx = fut_map[fut]
+                try:
+                    feat_list[idx] = fut.result()
+                except Exception:
+                    feat_list[idx] = None
+        valid_feat = [(i, c, f) for i, (c, f) in enumerate(zip(canon_list, feat_list)) if f is not None]
+        if not valid_feat:
+            return [{"error": "Could not compute features"} for _ in smiles_list]
+
+        indices = [vf[0] for vf in valid_feat]
+        canons = [vf[1] for vf in valid_feat]
+        feats = np.array([vf[2] for vf in valid_feat], dtype=np.float32)
+
+        all_results: list[dict | None] = [None] * len(smiles_list)
+        for idx, canon, feat_vec in zip(indices, canons, feats):
+            all_results[valid_indices[idx]] = {"SMILES": canon}
+
+        for key in self._model_paths:
+            cfg = ENDPOINTS.get(key)
+            if cfg is None:
+                continue
+            model = self._get_model(key)
+            batch_feats = self._validate_feature(feats)
+            if cfg["task"] == "classification":
+                probs = model.predict_proba(batch_feats)[:, 1]
+                classify_fn = cfg.get("classify")
+                for j, idx in enumerate(indices):
+                    prob = float(probs[j])
+                    orig_idx = valid_indices[idx]
+                    all_results[orig_idx][cfg["name"]] = round(prob, 3)
+                    if classify_fn:
+                        extra = classify_fn(prob)
+                        if extra:
+                            all_results[orig_idx].update(extra)
+            else:
+                vals = model.predict(batch_feats)
+                classify_fn = cfg.get("classify")
+                for j, idx in enumerate(indices):
+                    val = float(vals[j])
+                    orig_idx = valid_indices[idx]
+                    all_results[orig_idx][cfg["name"]] = round(val, 3) if key != "ppbr" else round(val, 1)
+                    if classify_fn:
+                        extra = classify_fn(val)
+                        if extra:
+                            all_results[orig_idx].update(extra)
+
+        for idx, canon, feat_vec in zip(indices, canons, feats):
+            orig_idx = valid_indices[idx]
+            desc = self._extract_descriptors(feat_vec)
+            all_results[orig_idx].update(desc)
+
+        return [r if r is not None else {"error": "Prediction failed"} for r in all_results]
 
     def predict_dataframe(
         self, smiles_list: list[str], drug_names: list[str] | None = None,
@@ -168,3 +330,7 @@ class ADMETPredictor:
                 r["Drug"] = name
                 results.append(r)
         return pd.DataFrame(results)
+
+
+def create_predictor() -> ADMETPredictor:
+    return ADMETPredictor()
