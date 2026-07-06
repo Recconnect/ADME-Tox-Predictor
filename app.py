@@ -12,6 +12,7 @@ from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 from src.i18n import t, translate_class, translate_prop_name, translate_model_name, get_lang, sidebar_lang_selector
 from src.usage import get_stats
 from src.radar import compute_scores, plot_radar
+from src.pdf_report import generate_pdf
 
 
 def draw_molecule(smiles: str) -> str | None:
@@ -169,6 +170,14 @@ with tab1:
                 fig = plot_radar(scores, lang)
                 st.caption(t("radar_title", lang))
                 st.pyplot(fig)
+
+            if st.download_button(
+                t("pdf_download", lang),
+                data=generate_pdf(smiles, result, lang),
+                file_name=f"admetox_{smiles[:20]}.pdf".replace("/", "_"),
+                mime="application/pdf",
+            ):
+                pass
 
             with st.expander(t("single_expander", lang)):
                 prop_keys_set = set([
