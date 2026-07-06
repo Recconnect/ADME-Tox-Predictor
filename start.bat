@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 title ADMETox.AI
 cd /d "%~dp0"
 
@@ -14,8 +13,8 @@ echo ========================================
 echo   ADMETox.AI v2 - AI Drug Screener
 echo ========================================
 echo.
-echo   Запуск Streamlit UI...
-echo   Открой в браузере: http://localhost:8501
+echo   Starting Streamlit UI...
+echo   Open in browser: http://localhost:8501
 echo.
 echo ========================================
 echo.
@@ -30,7 +29,7 @@ echo ========================================
 echo   ADMETox.AI v3 - AMD ROCm Dev Environment
 echo ========================================
 echo.
-echo   Запуск Docker-контейнера для разработки...
+echo   Starting Docker dev container...
 echo.
 echo   docker compose -f deploy\docker\docker-compose.dev.yml run dev
 echo.
@@ -44,9 +43,9 @@ goto end
 echo.
 echo ADMETox.AI - Launch Script
 echo.
-echo   start.bat           Запуск Streamlit UI
-echo   start.bat -dev      Запуск Docker dev-среды (ROCm)
-echo   start.bat -h        Эта справка
+echo   start.bat           Start Streamlit UI
+echo   start.bat -dev      Start Docker dev environment (ROCm)
+echo   start.bat -h        Show this help
 echo.
 
 :end
