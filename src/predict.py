@@ -22,8 +22,19 @@ class ADMETPredictor:
         self._load_models()
 
     def _load_models(self):
-        for key in ["solubility", "caco2", "herg", "lipophilicity", "pgp"]:
-            path = MODELS_DIR / f"{key}_model.pkl"
+        model_keys = [
+            "solubility", "caco2", "herg", "lipophilicity", "pgp",
+            "cyp3a4", "cyp2d6", "ames", "bioavailability", "ppbr",
+        ]
+        herg_prefer = MODELS_DIR / "herg_model_expanded.pkl"
+        herg_fallback = MODELS_DIR / "herg_model.pkl"
+
+        for key in model_keys:
+            if key == "herg":
+                path = herg_prefer if herg_prefer.exists() else herg_fallback
+            else:
+                path = MODELS_DIR / f"{key}_model.pkl"
+
             if path.exists():
                 self.models[key] = load_model(path)
                 logger.info("Loaded model: %s", path)
@@ -36,7 +47,7 @@ class ADMETPredictor:
 
     @property
     def is_ready(self) -> bool:
-        return len(self.models) >= 3
+        return len(self.models) >= 5
 
     @property
     def model_keys(self) -> list[str]:
@@ -100,6 +111,31 @@ class ADMETPredictor:
             prob = float(self.models["pgp"].predict_proba(feat_2d)[0, 1])
             results["P-gp Inhibition"] = round(prob, 3)
             results["P-gp Class"] = "Inhibitor (high risk)" if prob > 0.5 else "Non-inhibitor (low risk)"
+
+        if "cyp3a4" in self.models:
+            prob = float(self.models["cyp3a4"].predict_proba(feat_2d)[0, 1])
+            results["CYP3A4 Inhibition"] = round(prob, 3)
+            results["CYP3A4 Class"] = "Inhibitor" if prob > 0.5 else "Non-inhibitor"
+
+        if "cyp2d6" in self.models:
+            prob = float(self.models["cyp2d6"].predict_proba(feat_2d)[0, 1])
+            results["CYP2D6 Inhibition"] = round(prob, 3)
+            results["CYP2D6 Class"] = "Inhibitor" if prob > 0.5 else "Non-inhibitor"
+
+        if "ames" in self.models:
+            prob = float(self.models["ames"].predict_proba(feat_2d)[0, 1])
+            results["Ames Mutagenicity"] = round(prob, 3)
+            results["Ames Class"] = "Mutagenic (positive)" if prob > 0.5 else "Non-mutagenic (negative)"
+
+        if "bioavailability" in self.models:
+            prob = float(self.models["bioavailability"].predict_proba(feat_2d)[0, 1])
+            results["Bioavailability"] = round(prob, 3)
+            results["Bioavailability Class"] = "High" if prob > 0.5 else "Low"
+
+        if "ppbr" in self.models:
+            val = float(self.models["ppbr"].predict(feat_2d)[0])
+            results["PPB (plasma binding)"] = round(val, 1)
+            results["PPB Class"] = "Highly bound (>90%)" if val > 90 else "Moderately bound (50-90%)" if val > 50 else "Weakly bound (<50%)"
 
         desc = compute_rdkit_descriptors(canon)
         if desc:

@@ -17,11 +17,6 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Install system deps (RDKit)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-rdkit librdkit-dev || echo "RDKit from apt not available, using pip"
-
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip

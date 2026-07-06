@@ -56,10 +56,20 @@ def train_all_models():
         task_type = TDC_INFO[key]["task"]
         params = MODEL_PARAMS.get(key, {})
 
+        X_full = np.vstack([X_train, X_val])
+        y_full = np.concatenate([y_train, y_val])
+        do_grid = key in ("caco2", "herg", "pgp")
+
         if task_type == "regression":
-            model, metrics = train_lightgbm_regression(X_train, y_train, X_val, y_val, params)
+            model, metrics = train_lightgbm_regression(
+                X_train, y_train, X_val, y_val, params,
+                X_full=X_full, y_full=y_full, do_grid=do_grid,
+            )
         else:
-            model, metrics = train_lightgbm_classification(X_train, y_train, X_val, y_val, params)
+            model, metrics = train_lightgbm_classification(
+                X_train, y_train, X_val, y_val, params,
+                X_full=X_full, y_full=y_full, do_grid=do_grid,
+            )
 
         metadata = {
             "key": key,

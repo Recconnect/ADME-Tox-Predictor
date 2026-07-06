@@ -133,5 +133,143 @@
         ]
       }
     }
+  },
+  "cyp3a4": {
+    "name": "CYP3A4_Veith",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 8631,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 1232,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 2465,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "cyp2d6": {
+    "name": "CYP2D6_Veith",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 9191,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 1313,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 2626,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "ames": {
+    "name": "Ames",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 5079,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 725,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 1451,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "bioavailability": {
+    "name": "Bioavailability_Ma",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 448,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 64,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 128,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "ppbr": {
+    "name": "PPBR_AZ",
+    "task": "regression",
+    "splits": {
+      "train": {
+        "count": 1259,
+        "columns": [
+          "Drug",
+          "Y",
+          "Species"
+        ]
+      },
+      "valid": {
+        "count": 179,
+        "columns": [
+          "Drug",
+          "Y",
+          "Species"
+        ]
+      },
+      "test": {
+        "count": 359,
+        "columns": [
+          "Drug",
+          "Y",
+          "Species"
+        ]
+      }
+    }
   }
 }

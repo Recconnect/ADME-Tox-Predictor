@@ -49,8 +49,16 @@ def check_lipinski_rule_of_five(desc: dict | None) -> dict:
 
 
 def color_class(val: str) -> str:
-    good = {"Soluble", "High permeability", "Safe (low risk)", "Non-inhibitor (low risk)"}
-    bad = {"Poorly soluble", "Low permeability", "Toxic (high risk)", "Inhibitor (high risk)"}
+    good = {
+        "Soluble", "High permeability", "Safe (low risk)", "Non-inhibitor (low risk)",
+        "Non-inhibitor", "Non-mutagenic (negative)", "High",
+        "Highly bound (>90%)",
+    }
+    bad = {
+        "Poorly soluble", "Low permeability", "Toxic (high risk)", "Inhibitor (high risk)",
+        "Inhibitor", "Mutagenic (positive)", "Low",
+        "Weakly bound (<50%)",
+    }
     if val in good:
         return "#00c853"
     if val in bad:
@@ -121,6 +129,11 @@ with tab1:
                     "hERG Toxicity Risk", "hERG Class",
                     "Lipophilicity (logD)",
                     "P-gp Inhibition", "P-gp Class",
+                    "CYP3A4 Inhibition", "CYP3A4 Class",
+                    "CYP2D6 Inhibition", "CYP2D6 Class",
+                    "Ames Mutagenicity", "Ames Class",
+                    "Bioavailability", "Bioavailability Class",
+                    "PPB (plasma binding)", "PPB Class",
                 ]
                 for i, key in enumerate([k for k in prop_keys if k in result]):
                     with prop_cols[i % 2]:
@@ -155,6 +168,11 @@ with tab1:
                     "Caco-2 Permeability", "Caco-2 Class",
                     "hERG Toxicity Risk", "hERG Class",
                     "Lipophilicity (logD)", "P-gp Inhibition", "P-gp Class",
+                    "CYP3A4 Inhibition", "CYP3A4 Class",
+                    "CYP2D6 Inhibition", "CYP2D6 Class",
+                    "Ames Mutagenicity", "Ames Class",
+                    "Bioavailability", "Bioavailability Class",
+                    "PPB (plasma binding)", "PPB Class",
                 ])
                 desc_keys = [k for k in result.keys() if k not in prop_keys_set | {"error", "SMILES"}]
                 desc_data = {k: result[k] for k in desc_keys if k in result}
@@ -295,12 +313,17 @@ with st.sidebar:
 **{t('sidebar_about', lang)}**
 
 | {t('sidebar_property', lang)} | {t('sidebar_metric', lang)} |
-|---|---|
+|---|---|---|
 | {translate_model_name('solubility', lang)} | R² = **0.806** |
 | {translate_model_name('caco2', lang)} | AUC = **0.932** |
 | {translate_model_name('herg', lang)} | AUC = **0.846** |
 | {translate_model_name('lipophilicity', lang)} | R² = **0.651** |
 | {translate_model_name('pgp', lang)} | AUC = **0.964** |
+| {translate_model_name('cyp3a4', lang)} | — |
+| {translate_model_name('cyp2d6', lang)} | — |
+| {translate_model_name('ames', lang)} | — |
+| {translate_model_name('bioavailability', lang)} | — |
+| {translate_model_name('ppbr', lang)} | — |
 
 {t('sidebar_built_with', lang)}
 """

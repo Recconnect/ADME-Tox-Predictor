@@ -23,7 +23,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("admetox")
 
-PRIMARY_DATASETS = ["solubility", "caco2", "herg", "lipophilicity", "pgp"]
+PRIMARY_DATASETS = [
+    "solubility", "caco2", "herg", "lipophilicity", "pgp",
+    "cyp3a4", "cyp2d6", "ames", "bioavailability", "ppbr",
+]
 
 TDC_INFO = {
     "solubility": {"name": "AqSolDB", "task": "regression"},
@@ -31,6 +34,11 @@ TDC_INFO = {
     "herg": {"name": "hERG", "task": "classification"},
     "lipophilicity": {"name": "Lipophilicity", "task": "regression"},
     "pgp": {"name": "Pgp_Broccatelli", "task": "classification"},
+    "cyp3a4": {"name": "CYP3A4_Veith", "task": "classification"},
+    "cyp2d6": {"name": "CYP2D6_Veith", "task": "classification"},
+    "ames": {"name": "Ames", "task": "classification"},
+    "bioavailability": {"name": "Bioavailability_Ma", "task": "classification"},
+    "ppbr": {"name": "PPBR_AZ", "task": "regression"},
 }
 
 CACO2_THRESHOLD = -5.5
@@ -41,6 +49,11 @@ DATAVERSE_IDS = {
     "herg": 4259588,
     "lipophilicity": 4259595,
     "pgp": 4259597,
+    "cyp3a4": 4259582,
+    "cyp2d6": 4259580,
+    "ames": 4259564,
+    "bioavailability": 4259567,
+    "ppbr": 6413140,
 }
 
 FINGERPRINT_PARAMS = {"radius": 2, "n_bits": 2048}
@@ -71,6 +84,31 @@ MODEL_PARAMS = {
         "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
         "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
         "min_child_samples": 20,
+    },
+    "cyp3a4": {
+        "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "min_child_samples": 20,
+    },
+    "cyp2d6": {
+        "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "min_child_samples": 20,
+    },
+    "ames": {
+        "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "min_child_samples": 20,
+    },
+    "bioavailability": {
+        "n_estimators": 300, "learning_rate": 0.05, "max_depth": 3,
+        "num_leaves": 15, "subsample": 0.8, "colsample_bytree": 0.8,
+        "min_child_samples": 10,
+    },
+    "ppbr": {
+        "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "reg_alpha": 0.1, "reg_lambda": 0.1, "min_child_samples": 20,
     },
 }
 

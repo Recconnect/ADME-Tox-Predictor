@@ -104,6 +104,16 @@ def _result_to_properties(result: dict) -> list[PropertyResult]:
         ("Lipophilicity (logD)", None),
         ("P-gp Inhibition", None),
         ("P-gp Class", None),
+        ("CYP3A4 Inhibition", None),
+        ("CYP3A4 Class", None),
+        ("CYP2D6 Inhibition", None),
+        ("CYP2D6 Class", None),
+        ("Ames Mutagenicity", None),
+        ("Ames Class", None),
+        ("Bioavailability", None),
+        ("Bioavailability Class", None),
+        ("PPB (plasma binding)", None),
+        ("PPB Class", None),
     ]
     for name, unit in prop_names:
         if name in result:
@@ -137,7 +147,7 @@ def health_check():
     return HealthResponse(
         status="ready" if predictor.is_ready else "degraded",
         models_loaded=n_loaded,
-        models_expected=5,
+        models_expected=10,
         version="2.0",
         uptime_seconds=int(time.time() - _START_TIME),
         memory_mb=round(mem, 1),
