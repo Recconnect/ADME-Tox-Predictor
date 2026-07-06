@@ -29,10 +29,11 @@ from slowapi.errors import RateLimitExceeded
 from src.predict import ADMETPredictor
 from src.features import canonicalize_smiles
 from src.config import VALIDATION_DRUGS, MODELS_DIR, logger
+from src.auth import register_user, authenticate_user, verify_token as verify_jwt_token
 from api.schemas import (
     PredictRequest, PredictResponse, PropertyResult,
     BatchPredictRequest, BatchPredictResponse,
-    HealthResponse,
+    HealthResponse, RegisterRequest, LoginRequest, AuthResponse,
 )
 
 _START_TIME = time.time()
@@ -51,10 +52,20 @@ if _api_key_env:
 security = HTTPBearer(auto_error=False)
 
 
-def verify_api_key(credentials: HTTPAuthorizationCredentials | None = Depends(security)):
-    if not API_KEYS:
+def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(security)):
+    if credentials is None:
+        if API_KEYS:
+            raise HTTPException(403, "Missing authorization token")
         return
-    if credentials is None or credentials.credentials not in API_KEYS:
+    token = credentials.credentials
+    if token in API_KEYS:
+        return
+    payload = verify_jwt_token(token)
+    if payload is not None:
+        request.state.user = payload.get("sub")
+        request.state.role = payload.get("role", "user")
+        return
+    if API_KEYS:
         raise HTTPException(403, "Invalid or missing API key. Set ADMETOX_API_KEYS env var.")
 
 
@@ -182,6 +193,27 @@ def predict_batch(request: Request, req: BatchPredictRequest, _: None = Depends(
 @app.get("/metrics", tags=["System"])
 def get_metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.post("/register", response_model=AuthResponse, tags=["Auth"])
+@limiter.limit("5/minute")
+def register(request: Request, req: RegisterRequest):
+    err = register_user(req.username, req.password)
+    if err:
+        raise HTTPException(400, err)
+    token = authenticate_user(req.username, req.password)
+    if not token:
+        raise HTTPException(500, "Registration succeeded but login failed")
+    return AuthResponse(access_token=token, username=req.username)
+
+
+@app.post("/login", response_model=AuthResponse, tags=["Auth"])
+@limiter.limit("20/minute")
+def login(request: Request, req: LoginRequest):
+    token = authenticate_user(req.username, req.password)
+    if not token:
+        raise HTTPException(401, "Invalid username or password")
+    return AuthResponse(access_token=token, username=req.username)
 
 
 @app.get("/validate", response_model=list[PredictResponse], tags=["Prediction"])

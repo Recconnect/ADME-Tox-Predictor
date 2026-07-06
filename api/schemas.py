@@ -36,3 +36,20 @@ class HealthResponse(BaseModel):
     uptime_seconds: int | None = None
     memory_mb: float | None = None
     model_files: dict[str, str] | None = None
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    username: str
+    role: str = "user"
