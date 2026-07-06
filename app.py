@@ -203,6 +203,24 @@ def compute_health_score(result: dict) -> tuple[int, str]:
     return pct, level
 
 
+def _results_to_display_df(results: list[dict], lang: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    df = pd.DataFrame(results)
+    if "SMILES" in df.columns:
+        col = df.pop("SMILES")
+        df.insert(0, "SMILES", col)
+    for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                f'{html.escape(translate_class(str(v), lang))}</span>'
+            )
+            df = df.rename(columns={col: translate_prop_name(col, lang)})
+    df_to_show = df.copy()
+    for col in df_to_show.select_dtypes(include="object").columns:
+        df_to_show[col] = df_to_show[col].apply(html.escape)
+    return df, df_to_show
+
+
 def _prop_to_pct(key: str, result: dict) -> int | None:
     val = result.get(key)
     if val is None or not isinstance(val, (int, float)):
@@ -438,18 +456,7 @@ with tab2:
             smiles_list = [s.strip() for s in batch_smiles.split("\n") if s.strip()]
             with st.spinner(t("batch_spinner", lang, n=len(smiles_list))):
                 results = predictor.predict_batch(smiles_list)
-            df = pd.DataFrame(results)
-            df.insert(0, "SMILES", smiles_list[:len(df)])
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
-                if col in df.columns:
-                    df[col] = df[col].apply(
-                        lambda v, c=col: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{html.escape(translate_class(str(v), lang))}</span>'
-                    )
-                    df = df.rename(columns={col: translate_prop_name(col, lang)})
-            df_to_show = df.copy()
-            for col in df_to_show.select_dtypes(include="object").columns:
-                df_to_show[col] = df_to_show[col].apply(html.escape)
+            df, df_to_show = _results_to_display_df(results, lang)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 t("batch_download", lang), df.to_csv(index=False).encode("utf-8"),
@@ -489,21 +496,10 @@ with tab2:
                 st.stop()
             with st.spinner(t("batch_spinner", lang, n=len(smiles_list))):
                 results = predictor.predict_batch(smiles_list)
-            df_output = pd.DataFrame(results)
-            df_output.insert(0, "SMILES", smiles_list[:len(df_output)])
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
-                if col in df_output.columns:
-                    df_output[col] = df_output[col].apply(
-                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{html.escape(translate_class(str(v), lang))}</span>'
-                    )
-                    df_output = df_output.rename(columns={col: translate_prop_name(col, lang)})
-            df_to_show = df_output.copy()
-            for col in df_to_show.select_dtypes(include="object").columns:
-                df_to_show[col] = df_to_show[col].apply(html.escape)
+            df, df_to_show = _results_to_display_df(results, lang)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
-                t("batch_download", lang), df_output.to_csv(index=False).encode("utf-8"),
+                t("batch_download", lang), df.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
             )
 
