@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# Virtual environment
+venv/
+.env/
+
+# Data files (large)
+data/*.tab
+data/*.csv
+data/*.zip
+
+# Models (binary)
+models/*.pkl
+models/training_results.json
+
+# Logs
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated charts
+promo/charts/

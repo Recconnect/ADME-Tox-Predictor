@@ -1,0 +1,83 @@
+{
+  "solubility": {
+    "name": "AqSolDB",
+    "task": "regression",
+    "splits": {
+      "train": {
+        "count": 6986,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 998,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 1996,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "caco2": {
+    "name": "Caco2_Wang",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 635,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 90,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 181,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "herg": {
+    "name": "hERG",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 455,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 64,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 129,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  }
+}

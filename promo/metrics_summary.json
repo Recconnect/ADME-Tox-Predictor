@@ -1,0 +1,63 @@
+{
+  "models": {
+    "solubility": {
+      "name": "Solubility (AqSolDB)",
+      "task": "regression",
+      "target_metric": "R² > 0.6",
+      "achieved": 0.826,
+      "status": "exceeded"
+    },
+    "caco2": {
+      "name": "Caco-2 Permeability",
+      "task": "classification",
+      "target_metric": "Accuracy > 75%",
+      "achieved": 0.830,
+      "status": "exceeded"
+    },
+    "herg": {
+      "name": "hERG Toxicity",
+      "task": "classification",
+      "target_metric": "AUC ROC > 0.7",
+      "achieved": 0.873,
+      "status": "exceeded"
+    }
+  },
+  "business_case": {
+    "market_size_2025_billion": 3.5,
+    "market_cagr_percent": 30,
+    "traditional_drug_cost_billion": 2.23,
+    "ai_reduction_percent": 90,
+    "ai_discovery_months": 18,
+    "traditional_discovery_months": 54,
+    "lead_optimization_budget_percent": 60,
+    "molecule_screening_reduction": "5-10x"
+  },
+  "funding_ask": {
+    "seed_usd": "200k-500k",
+    "use_of_funds": {
+      "proprietary_data": "fine-tuning on corporate data",
+      "hiring": "2-3 specialists (ML + cheminformatics)",
+      "infrastructure": "cloud GPU + data storage"
+    }
+  },
+  "business_model": {
+    "type": "SaaS/API for CRO & pharma",
+    "pricing_usd_per_year": "10k-50k per license",
+    "target_clients": ["CROs", "Biotech startups", "Pharma R&D departments"],
+    "competitive_advantage": "Narrow specialization + lab integration"
+  },
+  "roadmap": {
+    "phase_1_mvp": {
+      "timeline": "2-4 weeks",
+      "deliverables": ["LightGBM baseline (3 properties)", "Streamlit UI", "Validation on known drugs"]
+    },
+    "phase_2_pilot": {
+      "timeline": "2-3 months",
+      "deliverables": ["GNN improvement (+5-10%)", "API development", "Pilot with 1-2 CRO partners"]
+    },
+    "phase_3_scale": {
+      "timeline": "6-12 months",
+      "deliverables": ["5+ ADME/Tox properties", "Proprietary data pipeline", "Enterprise SaaS platform"]
+    }
+  }
+}
