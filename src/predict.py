@@ -22,7 +22,7 @@ class ADMETPredictor:
         self._load_models()
 
     def _load_models(self):
-        for key in ["solubility", "caco2", "herg"]:
+        for key in ["solubility", "caco2", "herg", "lipophilicity", "pgp"]:
             path = MODELS_DIR / f"{key}_model.pkl"
             if path.exists():
                 self.models[key] = load_model(path)
@@ -37,6 +37,10 @@ class ADMETPredictor:
     @property
     def is_ready(self) -> bool:
         return len(self.models) >= 3
+
+    @property
+    def model_keys(self) -> list[str]:
+        return list(self.models.keys())
 
     @property
     def feature_importances(self) -> dict:
@@ -87,6 +91,15 @@ class ADMETPredictor:
             prob = float(self.models["herg"].predict_proba(feat_2d)[0, 1])
             results["hERG Toxicity Risk"] = round(prob, 3)
             results["hERG Class"] = "Toxic (high risk)" if prob > 0.5 else "Safe (low risk)"
+
+        if "lipophilicity" in self.models:
+            logD = float(self.models["lipophilicity"].predict(feat_2d)[0])
+            results["Lipophilicity (logD)"] = round(logD, 3)
+
+        if "pgp" in self.models:
+            prob = float(self.models["pgp"].predict_proba(feat_2d)[0, 1])
+            results["P-gp Inhibition"] = round(prob, 3)
+            results["P-gp Class"] = "Inhibitor (high risk)" if prob > 0.5 else "Non-inhibitor (low risk)"
 
         desc = compute_rdkit_descriptors(canon)
         if desc:

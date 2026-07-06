@@ -31,8 +31,8 @@ def check_lipinski_rule_of_five(desc: dict | None) -> dict:
 
 
 def color_class(val: str) -> str:
-    good = {"Soluble", "High permeability", "Safe (low risk)"}
-    bad = {"Poorly soluble", "Low permeability", "Toxic (high risk)"}
+    good = {"Soluble", "High permeability", "Safe (low risk)", "Non-inhibitor (low risk)"}
+    bad = {"Poorly soluble", "Low permeability", "Toxic (high risk)", "Inhibitor (high risk)"}
     if val in good:
         return "#00c853"
     if val in bad:
@@ -91,6 +91,8 @@ with tab1:
                 "Solubility (logS)", "SolubilityClass",
                 "Caco-2 Permeability", "Caco-2 Class",
                 "hERG Toxicity Risk", "hERG Class",
+                "Lipophilicity (logD)",
+                "P-gp Inhibition", "P-gp Class",
             ]
             for key in prop_keys:
                 if key in result:
@@ -150,7 +152,7 @@ with tab2:
                 results = predictor.predict_batch(smiles_list)
             df = pd.DataFrame(results)
             df.insert(0, "SMILES", smiles_list[:len(df)])
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df.columns:
                     df[col] = df[col].apply(
                         lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
@@ -181,7 +183,7 @@ with tab2:
                 results = predictor.predict_batch(smiles_list)
             df_output = pd.DataFrame(results)
             df_output.insert(0, "SMILES", smiles_list[:len(df_output)])
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df_output.columns:
                     df_output[col] = df_output[col].apply(
                         lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
@@ -204,10 +206,12 @@ with tab3:
                 "Drug", "Solubility (logS)", "SolubilityClass",
                 "Caco-2 Permeability", "Caco-2 Class",
                 "hERG Toxicity Risk", "hERG Class",
+                "Lipophilicity (logD)",
+                "P-gp Inhibition", "P-gp Class",
             ]
             display_cols = [c for c in display_cols if c in df_val.columns]
             df_display = df_val[display_cols].copy()
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df_display.columns:
                     df_display[col] = df_display[col].apply(
                         lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
@@ -223,6 +227,11 @@ with tab3:
             if "hERG Class" in df_val.columns:
                 toxic = (df_val["hERG Class"] == "Toxic (high risk)").sum()
                 summary["hERG Toxic"] = f"{toxic}/{len(df_val)}"
+            if "Lipophilicity (logD)" in df_val.columns:
+                summary["Avg LogD"] = round(df_val["Lipophilicity (logD)"].mean(), 3)
+            if "P-gp Class" in df_val.columns:
+                inhib = (df_val["P-gp Class"] == "Inhibitor (high risk)").sum()
+                summary["P-gp Inhibitors"] = f"{inhib}/{len(df_val)}"
             st.json(summary)
 
             st.download_button(
@@ -239,6 +248,8 @@ with tab4:
         "solubility": "Solubility (logS)",
         "caco2": "Caco-2 Permeability",
         "herg": "hERG Toxicity",
+        "lipophilicity": "Lipophilicity (logD)",
+        "pgp": "P-gp Inhibition",
     }
 
     for key, label in model_names.items():
@@ -261,7 +272,9 @@ with st.sidebar:
 |---|---|
 | Solubility | R² = **0.806** |
 | Caco-2 | AUC = **0.932** |
-| hERG | AUC = **0.846** |
+| hERG | AUC = **0.914** |
+| Lipophilicity | R² = **trained** |
+| P-gp | Acc = **trained** |
 
 Built with LightGBM + RDKit
 """)

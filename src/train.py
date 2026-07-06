@@ -2,7 +2,7 @@ import json
 import numpy as np
 from sklearn.metrics import r2_score, mean_absolute_error, accuracy_score, roc_auc_score
 
-from src.config import MODELS_DIR, MODEL_PARAMS, TDC_INFO, CACO2_THRESHOLD, logger
+from src.config import MODELS_DIR, MODEL_PARAMS, TDC_INFO, CACO2_THRESHOLD, PRIMARY_DATASETS, logger
 from src.data_loader import load_all_primary_datasets, save_datasets_info
 from src.features import feature_pipeline
 from src.models import (
@@ -21,7 +21,7 @@ def train_all_models():
 
     results = {}
 
-    for key in ["solubility", "caco2", "herg"]:
+    for key in PRIMARY_DATASETS:
         logger.info("=" * 60)
         logger.info("Step 2: Feature engineering for %s", key)
         logger.info("=" * 60)

@@ -79,5 +79,59 @@
         ]
       }
     }
+  },
+  "lipophilicity": {
+    "name": "Lipophilicity",
+    "task": "regression",
+    "splits": {
+      "train": {
+        "count": 2940,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 420,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 840,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
+  },
+  "pgp": {
+    "name": "Pgp_Broccatelli",
+    "task": "classification",
+    "splits": {
+      "train": {
+        "count": 849,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "valid": {
+        "count": 121,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      },
+      "test": {
+        "count": 242,
+        "columns": [
+          "Drug",
+          "Y"
+        ]
+      }
+    }
   }
 }

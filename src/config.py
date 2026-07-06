@@ -23,12 +23,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("admetox")
 
-PRIMARY_DATASETS = ["solubility", "caco2", "herg"]
+PRIMARY_DATASETS = ["solubility", "caco2", "herg", "lipophilicity", "pgp"]
 
 TDC_INFO = {
     "solubility": {"name": "AqSolDB", "task": "regression"},
     "caco2": {"name": "Caco2_Wang", "task": "classification"},
     "herg": {"name": "hERG", "task": "classification"},
+    "lipophilicity": {"name": "Lipophilicity", "task": "regression"},
+    "pgp": {"name": "Pgp_Broccatelli", "task": "classification"},
 }
 
 CACO2_THRESHOLD = -5.5
@@ -56,6 +58,16 @@ MODEL_PARAMS = {
         "min_child_samples": 20,
     },
     "herg": {
+        "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "min_child_samples": 20,
+    },
+    "lipophilicity": {
+        "n_estimators": 800, "learning_rate": 0.05, "max_depth": 6,
+        "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
+        "reg_alpha": 0.1, "reg_lambda": 0.1, "min_child_samples": 20,
+    },
+    "pgp": {
         "n_estimators": 500, "learning_rate": 0.05, "max_depth": 5,
         "num_leaves": 31, "subsample": 0.8, "colsample_bytree": 0.8,
         "min_child_samples": 20,

@@ -19,7 +19,7 @@ class TestPredictor:
 
     def test_predictor_loaded(self, predictor):
         assert predictor.is_ready
-        assert len(predictor.models) == 3
+        assert len(predictor.models) >= 3
 
     def test_predict_ethanol(self, predictor):
         result = predictor.predict_single("CCO")
@@ -27,6 +27,8 @@ class TestPredictor:
         assert "Solubility (logS)" in result
         assert "Caco-2 Class" in result
         assert "hERG Class" in result
+        assert "Lipophilicity (logD)" in result
+        assert "P-gp Class" in result
 
     def test_predict_aspirin(self, predictor):
         result = predictor.predict_single("CC(=O)Oc1ccccc1C(=O)O")
