@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 from src.predict import ADMETPredictor
 from src.features import canonicalize_smiles, compute_rdkit_descriptors
@@ -29,6 +30,9 @@ from api.schemas import (
 )
 
 _START_TIME = time.time()
+
+REQUEST_COUNT = Counter("admetox_requests_total", "Total requests", ["method", "endpoint"])
+REQUEST_LATENCY = Histogram("admetox_request_latency_seconds", "Request latency", ["endpoint"])
 
 app = FastAPI(
     title="ADMETox.AI API",
@@ -49,8 +53,11 @@ app.add_middleware(
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start = time.time()
+    endpoint = request.url.path
+    REQUEST_COUNT.labels(method=request.method, endpoint=endpoint).inc()
     response = await call_next(request)
     elapsed = time.time() - start
+    REQUEST_LATENCY.labels(endpoint=endpoint).observe(elapsed)
     response.headers["X-Process-Time"] = str(round(elapsed, 4))
     return response
 
@@ -67,6 +74,9 @@ def _result_to_properties(result: dict) -> list[PropertyResult]:
         ("Caco-2 Class", None),
         ("hERG Toxicity Risk", None),
         ("hERG Class", None),
+        ("Lipophilicity (logD)", None),
+        ("P-gp Inhibition", None),
+        ("P-gp Class", None),
     ]
     for name, unit in prop_names:
         if name in result:
@@ -116,6 +126,11 @@ def predict_batch(req: BatchPredictRequest):
             failed += 1
 
     return BatchPredictResponse(results=results, total=n, failed=failed)
+
+
+@app.get("/metrics", tags=["System"])
+def get_metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/validate", response_model=list[PredictResponse], tags=["Prediction"])
