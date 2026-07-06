@@ -208,16 +208,29 @@ def _results_to_display_df(results: list[dict], lang: str) -> tuple[pd.DataFrame
     if "SMILES" in df.columns:
         col = df.pop("SMILES")
         df.insert(0, "SMILES", col)
-    for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
-        if col in df.columns:
-            df[col] = df[col].apply(
-                lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                f'{html.escape(translate_class(str(v), lang))}</span>'
-            )
-            df = df.rename(columns={col: translate_prop_name(col, lang)})
+    display_cols = ["SMILES"] + [c for c in [
+        "Solubility (logS)", "SolubilityClass",
+        "Caco-2 Permeability", "Caco-2 Class",
+        "hERG Toxicity Risk", "hERG Class",
+        "Lipophilicity (logD)",
+        "P-gp Inhibition", "P-gp Class",
+        "CYP3A4 Inhibition", "CYP3A4 Class",
+        "CYP2D6 Inhibition", "CYP2D6 Class",
+        "Ames Mutagenicity", "Ames Class",
+        "Bioavailability", "Bioavailability Class",
+        "PPB (plasma binding)", "PPB Class",
+    ] if c in df.columns]
+    df = df[display_cols]
     df_to_show = df.copy()
     for col in df_to_show.select_dtypes(include="object").columns:
         df_to_show[col] = df_to_show[col].apply(html.escape)
+    for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
+        if col in df_to_show.columns:
+            df_to_show[col] = df_to_show[col].apply(
+                lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                f'{html.escape(translate_class(str(v), lang))}</span>'
+            )
+            df_to_show = df_to_show.rename(columns={col: translate_prop_name(col, lang)})
     return df, df_to_show
 
 
@@ -519,18 +532,18 @@ with tab3:
             ]
             display_cols = [c for c in display_cols if c in df_val.columns]
             df_display = df_val[display_cols].copy()
-            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
-                if col in df_display.columns:
-                    df_display[col] = df_display[col].apply(
-                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
-                        f'{html.escape(translate_class(str(v), lang))}</span>'
-                    )
-                    df_display = df_display.rename(columns={col: translate_prop_name(col, lang)})
-            rename_map = {k: translate_prop_name(k, lang) for k in df_display.columns if k != "Drug"}
-            df_display = df_display.rename(columns=rename_map)
             df_to_show = df_display.copy()
             for col in df_to_show.select_dtypes(include="object").columns:
                 df_to_show[col] = df_to_show[col].apply(html.escape)
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
+                if col in df_to_show.columns:
+                    df_to_show[col] = df_to_show[col].apply(
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                        f'{html.escape(translate_class(str(v), lang))}</span>'
+                    )
+                    df_to_show = df_to_show.rename(columns={col: translate_prop_name(col, lang)})
+            rename_map = {k: translate_prop_name(k, lang) for k in df_to_show.columns if k != "Drug"}
+            df_to_show = df_to_show.rename(columns=rename_map)
             st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.subheader("Summary" if lang == "en" else "Сводка")
             sc1, sc2, sc3, sc4, sc5 = st.columns(5)
