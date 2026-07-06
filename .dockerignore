@@ -12,3 +12,8 @@ users.json
 promo/
 *.md
 LICENSE
+.env
+**/__pycache__/
+.pytest_cache/
+.gitignore
+.gitattributes

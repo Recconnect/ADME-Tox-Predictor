@@ -1,33 +1,67 @@
 version: "3.9"
 
+x-defaults: &defaults
+  restart: unless-stopped
+  env_file: .env
+
 services:
-  ui:
+  nginx:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: base
+      dockerfile: deploy/nginx/Dockerfile
     ports:
-      - "8501:8501"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./logs:/app/logs
-    environment:
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-    restart: unless-stopped
+      - certbot-www:/var/www/certbot
+      - certbot-etc:/etc/letsencrypt
+    depends_on:
+      - api
+      - ui
+    <<: *defaults
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
       target: api
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
-      - ./data:/app/data
       - ./models:/app/models
-      - ./logs:/app/logs
+      - usage-data:/app/data
     environment:
+      - ADMETOX_JWT_SECRET=${ADMETOX_JWT_SECRET:?err}
       - ADMETOX_API_KEYS=${ADMETOX_API_KEYS:-}
-    restart: unless-stopped
+      - ADMETOX_CORS_ORIGINS=${ADMETOX_CORS_ORIGINS:-https://admetox.ai}
+    <<: *defaults
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ui
+    expose:
+      - "8501"
+    environment:
+      - ADMETOX_JWT_SECRET=${ADMETOX_JWT_SECRET:?err}
+    <<: *defaults
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-etc:/etc/letsencrypt
+    entrypoint: >
+      sh -c "certbot certonly --webroot -w /var/www/certbot
+      -d '$${DOMAIN:?err}' -d 'www.$${DOMAIN:?err}'
+      --email '$${SSL_EMAIL:?err}' --agree-tos --non-interactive
+      && echo 'Certificates obtained. Renewal handled via cron.'"
+    profiles:
+      - setup
+    <<: *defaults
+
+volumes:
+  certbot-www:
+  certbot-etc:
+  usage-data:

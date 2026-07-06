@@ -2,19 +2,39 @@
 
 AI-прототип для предсказания ADME-свойств и токсичности молекул (drug discovery).
 
-## Быстрый старт
+## Быстрый старт (Docker — рекомендовано)
 
-```powershell
-cd D:\AI\biotech\adme_proto
+```bash
+# 1. Клонировать
+git clone https://github.com/bradist/ADME-Tox-Predictor.git
+cd ADME-Tox-Predictor
 
-# Активировать окружение
-.\venv\Scripts\activate
+# 2. Создать .env с секретами
+cp .env.example .env
+# Отредактировать .env: сгенерировать ADMETOX_JWT_SECRET
+#   openssl rand -hex 32
 
-# Запустить веб-интерфейс
-streamlit run app.py
+# 3. Собрать и запустить
+docker compose up -d --build
+
+# 4. Открыть в браузере
+#   Landing:  http://localhost
+#   UI:       http://localhost/ui/
+#   API docs: http://localhost/docs
 ```
 
-Откройте в браузере: http://localhost:8501
+## Быстрый старт (локально)
+
+```bash
+python3 -m venv venv
+source venv/bin/activate   # Linux/Mac
+# .\venv\Scripts\activate  # Windows
+
+pip install -r requirements.txt
+streamlit run app.py --server.port=8501
+```
+
+Откройте: http://localhost:8501
 
 ## Обучение моделей заново
 
@@ -30,19 +50,63 @@ python run_train.py
 
 ```
 adme_proto/
-├── src/
-│   ├── config.py        # Настройки, пути, названия датасетов
-│   ├── data_loader.py   # Загрузка AqSolDB, Caco-2, hERG с Harvard Dataverse
-│   ├── features.py      # 30 RDKit дескрипторов + Morgan fingerprint (2048 бит)
-│   ├── models.py        # LightGBM (регрессия + классификация)
-│   ├── train.py         # Пайплайн обучения всех моделей
-│   └── predict.py       # Класс ADMETPredictor для инференса
-├── app.py               # Streamlit UI (3 вкладки: Single/Batch/Validation)
-├── models/              # Сохранённые .pkl модели
-│   ├── solubility_model.pkl
-│   ├── caco2_model.pkl
-│   └── herg_model.pkl
-└── data/                # Сырые .tab файлы датасетов
+├── src/                  # Ядро: фичи, модели, предикт
+├── api/                  # FastAPI REST API
+├── app.py                # Streamlit UI
+├── deploy/
+│   ├── nginx/
+│   │   ├── Dockerfile    # nginx + certbot
+│   │   └── default.conf  # маршрутизация: / → landing, /api/ → FastAPI, /ui/ → Streamlit
+│   ├── nginx.conf        # production nginx (bare-metal)
+│   ├── systemd/          # systemd unit-файлы (bare-metal)
+│   └── Makefile          # команды deploy/update/restart
+├── landing/              # Статическая landing page
+├── models/               # Обученные .pkl модели (вшиты в Docker-образ)
+├── data/                 # Сырые датасеты .tab
+├── Dockerfile            # Многостадийный: base → ui / api
+├── docker-compose.yml    # 3 сервиса: nginx + api + ui (+ certbot для SSL)
+└── .env.example          # Шаблон переменных окружения
+```
+
+## Docker Compose (рекомендованный способ)
+
+### Сервисы
+
+| Сервис | Роль | Порт | Доступ через nginx |
+|--------|------|------|--------------------|
+| **nginx** | TLS termination, роутинг, landing page | 80/443 | `/` — landing, `/ui/` — Streamlit, `/api/` — FastAPI, `/docs` — Swagger |
+| **api** | FastAPI REST API (predict, batch, health) | 8000 | `/api/`, `/docs` |
+| **ui** | Streamlit Web UI | 8501 | `/ui/` |
+| **certbot** | Автоматическое получение SSL-сертификатов | — | Разовый запуск: `docker compose --profile setup run certbot` |
+
+### Переменные окружения (.env)
+
+| Переменная | Обязательная | Описание |
+|------------|-------------|----------|
+| `ADMETOX_JWT_SECRET` | ✅ | Секрет для JWT-токенов (64 символа hex) |
+| `ADMETOX_API_KEYS` | ❌ | API-ключи через запятую (если пусто — только JWT) |
+| `ADMETOX_CORS_ORIGINS` | ❌ | Разрешённые CORS-источники через запятую |
+| `DOMAIN` | для SSL | Домен для Let's Encrypt |
+| `SSL_EMAIL` | для SSL | Email для уведомлений Let's Encrypt |
+
+### SSL-сертификаты
+
+```bash
+# Получить сертификаты (однократно)
+docker compose --profile setup run certbot
+
+# nginx автоматически подхватит сертификаты после перезапуска
+docker compose restart nginx
+
+# Обновление сертификатов (каждые 60 дней)
+docker compose run --rm certbot renew
+```
+
+### Обновление
+
+```bash
+git pull
+docker compose up -d --build
 ```
 
 ## Модели

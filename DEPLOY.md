@@ -1,30 +1,71 @@
 # Deploy ADMETox.AI
 
-## Option A: Docker Compose (быстрый старт)
+## Option A: Docker Compose (рекомендовано)
+
+### Требования
+
+- Docker Engine 24+
+- Docker Compose v2
+- 2+ GB RAM
+- Домен (для HTTPS)
+
+### Быстрый старт
 
 ```bash
 git clone https://github.com/bradist/ADME-Tox-Predictor.git
 cd ADME-Tox-Predictor
 
-# Обучить модели (нужно ~1-2 ГБ ОЗУ)
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python run_train.py
+# 1. Настроить .env
+cp .env.example .env
+#   - Сгенерировать ADMETOX_JWT_SECRET: openssl rand -hex 32
+#   - Указать DOMAIN и SSL_EMAIL для HTTPS
 
-# Запустить оба сервиса
-docker compose up -d
+# 2. Запустить
+docker compose up -d --build
 
-# Streamlit UI: http://localhost:8501
-# FastAPI docs:  http://localhost:8000/docs
+# 3. Проверить
+curl http://localhost/api/health
+curl -X POST http://localhost/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{"smiles": "CCO"}'
 ```
 
-## Option B: Native Ubuntu (продакшн)
+### HTTPS (Let's Encrypt)
+
+```bash
+# Получить сертификаты
+docker compose --profile setup run certbot
+
+# Перезапустить nginx
+docker compose restart nginx
+
+# Настроить автообновление (crontab -e):
+#   0 3 1 */2 * cd /opt/admetox && docker compose run --rm certbot renew && docker compose restart nginx
+```
+
+### Обновление
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+### Логи
+
+```bash
+docker compose logs -f api
+docker compose logs -f ui
+docker compose logs -f nginx
+```
+
+---
+
+## Option B: Native Ubuntu (без Docker)
 
 ### 1. Requirements
 
 - Ubuntu 22.04+
-- Python 3.14
+- Python 3.12
 - nginx
 - Let's Encrypt / certbot
 - 2+ GB RAM
@@ -42,7 +83,8 @@ cd /opt/admetox
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python run_train.py
+
+export ADMETOX_JWT_SECRET=$(openssl rand -hex 32)
 ```
 
 ### 3. Systemd
@@ -58,44 +100,38 @@ sudo systemctl start admetox-api admetox-ui
 ### 4. Nginx + SSL
 
 ```bash
+# Адаптировать server_name в deploy/nginx.conf под свой домен
 sudo cp deploy/nginx.conf /etc/nginx/sites-available/admetox
 sudo ln -s /etc/nginx/sites-available/admetox /etc/nginx/sites-enabled/
 sudo nginx -t && sudo nginx -s reload
 
 # SSL (Let's Encrypt)
-sudo certbot --nginx -d admetox.ai -d www.admetox.ai
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
-### 5. Landing страница
-
-```bash
-# GitHub Pages автоматически деплоит landing/ при пуше в master
-# https://bradist.github.io/ADME-Tox-Predictor/
-```
-
-### 6. Обновление
+### 5. Обновление
 
 ```bash
 cd /opt/admetox
 make deploy
-# или пошагово:
-# git pull
-# pip install -r requirements.txt
-# sudo systemctl restart admetox-api admetox-ui
 ```
 
-## Структура портов
+---
 
-| Сервис | Порт | URL |
-|--------|------|-----|
-| Streamlit UI | 8501 | `/ui/` (через nginx) |
-| FastAPI API | 8000 | `/api/` (через nginx) |
-| Landing page | 80/443 | `/` (статический nginx) |
+## Структура портов (Docker)
+
+| Сервис | Внутренний порт | Внешний порт | URL |
+|--------|----------------|--------------|-----|
+| nginx | 80/443 | 80/443 | `http://localhost/` |
+| FastAPI API | 8000 | — | `/api/` через nginx |
+| Streamlit UI | 8501 | — | `/ui/` через nginx |
 
 ## Переменные окружения
 
-| Переменная | По умолчанию | Описание |
-|------------|--------------|----------|
-| `API_PORT` | 8000 | Порт FastAPI |
-| `UI_PORT` | 8501 | Порт Streamlit |
-| `DEBUG` | false | Режим отладки |
+| Переменная | По умолчанию | Обязательная | Описание |
+|------------|-------------|-------------|----------|
+| `ADMETOX_JWT_SECRET` | — | ✅ | Секрет для JWT (сгенерировать `openssl rand -hex 32`) |
+| `ADMETOX_API_KEYS` | — | ❌ | API-ключи через запятую |
+| `ADMETOX_CORS_ORIGINS` | `https://admetox.ai` | ❌ | Разрешённые CORS-источники |
+| `DOMAIN` | — | для SSL | Домен для Let's Encrypt |
+| `SSL_EMAIL` | — | для SSL | Email для Let's Encrypt |
