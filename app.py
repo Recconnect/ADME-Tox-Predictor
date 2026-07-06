@@ -28,7 +28,8 @@ _CSS = """
   border-left: 5px solid;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  transition: transform 0.1s;
+  transition: transform 0.1s, box-shadow 0.15s;
+  position: relative;
 }
 .adme-card:hover {
   transform: translateY(-1px);
@@ -46,18 +47,38 @@ _CSS = """
   font-weight: 700;
   margin-top: 2px;
 }
+.adme-card[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2c3e50;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
 .health-score {
   text-align: center;
-  padding: 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f8f9fa, #ffffff);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f0f4f8 0%, #ffffff 50%, #f0f4f8 100%);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   margin-bottom: 16px;
+  border: 1px solid #e8ecf0;
 }
 .health-score .number {
-  font-size: 3rem;
+  font-size: 3.2rem;
   font-weight: 800;
   line-height: 1;
+  background: linear-gradient(135deg, #00c853, #1a5276);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .health-score .label {
   font-size: 0.85rem;
@@ -65,9 +86,9 @@ _CSS = """
   margin-top: 4px;
 }
 .health-score .desc {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 2px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 4px;
 }
 .group-header {
   font-size: 0.95rem;
@@ -75,7 +96,8 @@ _CSS = """
   color: #2c3e50;
   padding: 8px 0 4px 0;
   border-bottom: 2px solid #eef0f2;
-  margin-top: 12px;
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
 .progress-bg {
   height: 6px;
@@ -88,20 +110,6 @@ _CSS = """
   height: 100%;
   border-radius: 3px;
   transition: width 0.3s;
-}
-.chip-btn {
-  display: inline-block;
-  padding: 4px 14px;
-  margin: 4px 6px 4px 0;
-  border-radius: 20px;
-  background: #eef0f2;
-  font-size: 0.85rem;
-  cursor: pointer;
-  border: none;
-  transition: background 0.15s;
-}
-.chip-btn:hover {
-  background: #d5dbe0;
 }
 </style>
 """
@@ -244,9 +252,10 @@ predictor = get_predictor()
 if not predictor.is_ready:
     st.stop()
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     t("tab_single", lang), t("tab_batch", lang),
     t("tab_validation", lang), t("tab_features", lang),
+    t("tab_about", lang),
 ])
 
 # ───────── Tab 1: Single Molecule ─────────
@@ -274,13 +283,6 @@ with tab1:
         help=t("single_help", lang),
         max_chars=2000,
     )
-
-    chips_cols = st.columns(4)
-    example_drugs = {"Aspirin": VALIDATION_DRUGS["Aspirin"], "Caffeine": VALIDATION_DRUGS["Caffeine"], "Ibuprofen": VALIDATION_DRUGS["Ibuprofen"], "Paracetamol": VALIDATION_DRUGS["Paracetamol"]}
-    for i, (name, smi) in enumerate(example_drugs.items()):
-        if chips_cols[i % 4].button(name, key=f"chip_{name}", width="stretch"):
-            st.session_state["selected_smiles"] = smi
-            st.rerun()
 
     if st.button(t("single_button", lang), type="primary", key="predict_btn") and smiles:
         with st.spinner(t("single_spinner", lang)):
@@ -321,6 +323,27 @@ with tab1:
                     "Bioavailability", "Bioavailability Class",
                     "PPB (plasma binding)", "PPB Class",
                 ]
+                tooltips = {
+                    "Solubility (logS)": t("tooltip_solubility", lang),
+                    "SolubilityClass": t("tooltip_solubility_class", lang),
+                    "Caco-2 Permeability": t("tooltip_caco2", lang),
+                    "Caco-2 Class": t("tooltip_caco2_class", lang),
+                    "hERG Toxicity Risk": t("tooltip_herg", lang),
+                    "hERG Class": t("tooltip_herg_class", lang),
+                    "Lipophilicity (logD)": t("tooltip_lipophilicity", lang),
+                    "P-gp Inhibition": t("tooltip_pgp", lang),
+                    "P-gp Class": t("tooltip_pgp_class", lang),
+                    "CYP3A4 Inhibition": t("tooltip_cyp3a4", lang),
+                    "CYP3A4 Class": t("tooltip_cyp3a4_class", lang),
+                    "CYP2D6 Inhibition": t("tooltip_cyp2d6", lang),
+                    "CYP2D6 Class": t("tooltip_cyp2d6_class", lang),
+                    "Ames Mutagenicity": t("tooltip_ames", lang),
+                    "Ames Class": t("tooltip_ames_class", lang),
+                    "Bioavailability": t("tooltip_bioavailability", lang),
+                    "Bioavailability Class": t("tooltip_bioavailability_class", lang),
+                    "PPB (plasma binding)": t("tooltip_ppb", lang),
+                    "PPB Class": t("tooltip_ppb_class", lang),
+                }
                 groups = {
                     "group_absorption": ["Solubility (logS)", "SolubilityClass", "Caco-2 Permeability", "Caco-2 Class", "Lipophilicity (logD)"],
                     "group_safety": ["hERG Toxicity Risk", "hERG Class", "Ames Mutagenicity", "Ames Class"],
@@ -345,8 +368,9 @@ with tab1:
                                 f'<div class="progress-bg"><div class="progress-fill" '
                                 f'style="width:{pct_val}%;background:{bg_color}"></div></div>'
                             ) if pct_val is not None else ""
+                            tooltip = html.escape(tooltips.get(key, ""))
                             st.markdown(
-                                f'<div class="adme-card" style="border-left-color:{bg_color}">'
+                                f'<div class="adme-card" style="border-left-color:{bg_color}" data-tooltip="{tooltip}">'
                                 f'<div class="label">{label}</div>'
                                 f'<div class="value" style="color:{bg_color}">{display}</div>'
                                 f"{progress}</div>",
@@ -544,10 +568,12 @@ with tab4:
             st.dataframe(df, hide_index=True, width="stretch")
             st.caption(t("fi_caption", lang, value=f"{imp['fingerprint_total_importance']:.2f}"))
 
-# ───────── Sidebar ─────────
-with st.sidebar:
-    sidebar_lang_selector()
-    st.header(t("sidebar_about", lang))
+# ───────── Tab 5: About ─────────
+with tab5:
+    st.header(t("about_header", lang))
+    st.markdown(t("about_subtitle", lang))
+
+    st.subheader(t("about_models_title", lang))
     metrics_table = f"""
 | {t('sidebar_property', lang)} | {t('sidebar_metric', lang)} |
 |---|---|
@@ -563,19 +589,26 @@ with st.sidebar:
 | {translate_model_name('ppbr', lang)} | R² = **0.425** |
     """
     st.markdown(metrics_table)
-    st.header(t("sidebar_lipinski", lang))
+
+    st.subheader(t("sidebar_lipinski", lang))
     st.markdown(t("sidebar_lipinski_rules", lang))
-    st.header(t("sidebar_examples", lang))
+
+    st.subheader(t("sidebar_examples", lang))
     st.code(t("sidebar_examples_code", lang))
 
-    with st.expander(t("usage_title", lang)):
-        try:
-            stats = get_stats(30)
-            st.metric(t("usage_total", lang), stats["total_predictions"])
-            st.metric(t("usage_7d", lang), stats["predictions_7d"])
-            if stats["unique_users"]:
-                st.metric(t("usage_users", lang), stats["unique_users"])
-            if stats["avg_latency_ms"]:
-                st.metric(t("usage_latency", lang), f"{stats['avg_latency_ms']:.0f} ms")
-        except Exception:
-            pass
+    st.subheader(t("usage_title", lang))
+    try:
+        stats = get_stats(30)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(t("usage_total", lang), stats["total_predictions"])
+        c2.metric(t("usage_7d", lang), stats["predictions_7d"])
+        if stats["unique_users"]:
+            c3.metric(t("usage_users", lang), stats["unique_users"])
+        if stats["avg_latency_ms"]:
+            c4.metric(t("usage_latency", lang), f"{stats['avg_latency_ms']:.0f} ms")
+    except Exception:
+        pass
+
+# ───────── Sidebar ─────────
+with st.sidebar:
+    sidebar_lang_selector()
