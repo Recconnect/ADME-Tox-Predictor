@@ -253,6 +253,10 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.header(t("single_header", lang))
 
+    # Initialize selected SMILES in session state
+    if "selected_smiles" not in st.session_state:
+        st.session_state["selected_smiles"] = ""
+    
     drug_names = sorted(VALIDATION_DRUGS.keys(), key=str.lower)
     drug_names.insert(0, "")
     selected_drug = st.selectbox(
@@ -261,12 +265,12 @@ with tab1:
         key="drug_selector",
     )
     if selected_drug:
-        st.session_state["single_smiles"] = VALIDATION_DRUGS[selected_drug]
+        st.session_state["selected_smiles"] = VALIDATION_DRUGS[selected_drug]
 
     smiles = st.text_input(
         t("single_input_label", lang),
+        value=st.session_state["selected_smiles"],
         placeholder="CCO",
-        key="single_smiles",
         help=t("single_help", lang),
     )
 
@@ -274,7 +278,7 @@ with tab1:
     example_drugs = {"Aspirin": VALIDATION_DRUGS["Aspirin"], "Caffeine": VALIDATION_DRUGS["Caffeine"], "Ibuprofen": VALIDATION_DRUGS["Ibuprofen"], "Paracetamol": VALIDATION_DRUGS["Paracetamol"]}
     for i, (name, smi) in enumerate(example_drugs.items()):
         if chips_cols[i % 4].button(name, key=f"chip_{name}", width="stretch"):
-            st.session_state["single_smiles"] = smi
+            st.session_state["selected_smiles"] = smi
             st.rerun()
 
     if st.button(t("single_button", lang), type="primary", key="predict_btn") and smiles:
