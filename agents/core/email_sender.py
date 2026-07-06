@@ -9,10 +9,14 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import sqlite3
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class EmailSender:
-    def __init__(self, username=None, password=None, smtp_host=None, smtp_port=587):
+    def __init__(self, username=None, password=None, smtp_host=None, smtp_port=465):
         self.username = username or os.getenv("EMAIL_USER")
         self.password = password or os.getenv("EMAIL_PASSWORD")
         self.smtp_host = smtp_host or self._detect_smtp_host(self.username)
@@ -69,7 +73,7 @@ class EmailSender:
             if self.smtp_port == 465:
                 server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port)
             else:
-                server = smtplib.SMTP(self.smtp_host, self.smtp_port)
+                server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10)
                 server.starttls()
 
             server.login(self.username, self.password)

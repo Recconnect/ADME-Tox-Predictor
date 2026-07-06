@@ -17,19 +17,69 @@ agents/
 │   ├── github_release.py   # Автогенерация changelog + release
 │   ├── content_writer.py   # Генерация статей через LLM
 │   ├── investor_outreach.py # Email outreach инвесторам
-│   └── metrics_collector.py # Сбор метрик, еженедельные отчёты
+│   ├── metrics_collector.py # Сбор метрик, еженедельные отчёты
+│   ├── feedback_collector.py # Сбор обратной связи из GitHub/email
+│   ├── conference_tracker.py # Отслеживание конференций
+│   └── social_publisher.py  # Публикация в соцсети (LinkedIn, Twitter)
+│
+├── coordinator/             # Оркестратор всех агентов
+│   └── coordinator.py      # Расписание и запуск задач
 │
 ├── data/                    # Базы данных
-│   ├── investors.csv       # Список инвесторов
+│   ├── investors.csv       # 66 инвесторов (biotech/healthtech)
 │   ├── metrics.db          # SQLite для метрик
 │   ├── email_log.db        # Лог отправленных писем
+│   ├── feedback.db         # Обратная связь
+│   ├── conferences.db      # 10 конференций
+│   ├── social_posts.db     # Посты для соцсетей
 │   └── articles/           # Сгенерированные статьи
 │
-├── coordinator.py          # Оркестратор (расписание)
 ├── config.yml              # Конфигурация
 ├── .env                    # Секреты (не коммитится)
 └── requirements.txt        # Зависимости
 ```
+
+## Агенты
+
+### 1. GitHub Agent
+- **Автогенерация changelog** при коммитах в master
+- **Автоответы на issues** через LLM
+- **Создание releases** с автоматическим версионированием
+
+### 2. Content Agent
+- **Генерация статей** через LLM (GPT-4o-mini)
+- **6 тем** для статей (biotech, AI, drug discovery)
+- **Публикация** на Medium, Habr, VC.ru
+
+### 3. Investor Agent
+- **66 инвесторов** в базе (biotech/healthtech VCs и angels)
+- **Персонализированные письма** через LLM
+- **Follow-up** через 7/14/30 дней
+- **Лимит**: 5 писем/день (анти-спам)
+
+### 4. Feedback Agent
+- **Сбор обратной связи** из GitHub issues
+- **Классификация**: bug, feature request, question, investor interest
+- **Приоритизация**: high/medium/low
+- **Статистика** по типам и статусам
+
+### 5. Conference Agent
+- **10 конференций** в базе (Bio-IT World, MLDD, ACS и др.)
+- **Отслеживание дедлайнов** для CFP
+- **Напоминания** о предстоящих конференциях
+- **Релевантность**: drug discovery, AI, biotech
+
+### 6. Social Media Agent
+- **Генерация постов** для LinkedIn, Twitter, Medium
+- **Персонализация** под каждую платформу
+- **Хэштеги** и call-to-action
+- **Статистика** публикаций
+
+### 7. Metrics Agent
+- **Сбор метрик** GitHub (stars, forks, issues)
+- **Email статистика** (отправленные/открытые)
+- **Еженедельные отчёты** на email
+- **SQLite** для хранения метрик
 
 ## Установка
 
@@ -50,45 +100,66 @@ cp .env.example .env
 
 ## Использование
 
-### Ручной запуск задач
+### Координатор (оркестратор всех агентов)
+
+```bash
+# Показать статус всех агентов
+python -m coordinator.coordinator status
+
+# Запустить ежедневные задачи (GitHub, feedback, conferences)
+python -m coordinator.coordinator daily
+
+# Запустить еженедельные задачи (articles, outreach, social)
+python -m coordinator.coordinator weekly
+
+# Запустить все задачи
+python -m coordinator.coordinator all
+
+# Запустить планировщик (постоянная работа)
+python -m coordinator.coordinator schedule
+```
+
+### Ручной запуск отдельных агентов
 
 ```bash
 # GitHub release (при коммите в master)
-python coordinator.py release
+python -m tasks.github_release
 
 # Автоответы на issues
-python coordinator.py respond
+python -m tasks.github_respond
 
 # Генерация статьи
-python coordinator.py article
+python -m tasks.content_writer
 
 # Outreach инвесторам (макс 5 писем)
-python coordinator.py outreach
+python -m tasks.investor_outreach
 
 # Follow-up инвесторам (>7 дней без ответа)
-python coordinator.py followup
+python -m tasks.investor_followup
+
+# Сбор обратной связи
+python -m tasks.feedback_collector
+
+# Отслеживание конференций
+python -m tasks.conference_tracker
+
+# Публикация в соцсети
+python -m tasks.social_publisher
 
 # Сбор метрик и отчёт
-python coordinator.py metrics
-
-# Запуск всех задач
-python coordinator.py all
+python -m tasks.metrics_collector
 ```
 
 ### Автоматический запуск (расписание)
 
 ```bash
 # Запуск в режиме планировщика (бесконечный цикл)
-python coordinator.py schedule
+python -m coordinator.coordinator schedule
 ```
 
 **Расписание:**
-- GitHub release: ежедневно в 10:00
-- Автоответы на issues: ежедневно в 10:05
-- Генерация статьи: понедельник в 09:00
-- Outreach инвесторам: пн-пт в 11:00 (макс 5 писем/день)
-- Follow-up инвесторам: пятница в 14:00
-- Еженедельный отчёт: воскресенье в 20:00
+- **Ежедневно в 10:00**: GitHub release, автоответы на issues, сбор feedback, отслеживание конференций
+- **Еженедельно (понедельник в 09:00)**: генерация статьи, outreach инвесторам, follow-up, публикация в соцсети, отчёт по метрикам
 
 ### Запуск через cron (Linux/Mac)
 
@@ -97,14 +168,11 @@ python coordinator.py schedule
 crontab -e
 
 # Добавить задачи:
-# GitHub release: каждый день в 10:00
-0 10 * * * cd /path/to/agents && python coordinator.py release
+# Ежедневные задачи: каждый день в 10:00
+0 10 * * * cd /path/to/agents && python -m coordinator.coordinator daily
 
-# Outreach: пн-пт в 11:00
-0 11 * * 1-5 cd /path/to/agents && python coordinator.py outreach
-
-# Еженедельный отчёт: воскресенье в 20:00
-0 20 * * 0 cd /path/to/agents && python coordinator.py metrics
+# Еженедельные задачи: каждый понедельник в 09:00
+0 9 * * 1 cd /path/to/agents && python -m coordinator.coordinator weekly
 ```
 
 ## Конфигурация
