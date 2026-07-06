@@ -1,4 +1,5 @@
 import io
+import re
 import html
 import sys
 from pathlib import Path
@@ -419,8 +420,17 @@ with tab2:
     )
 
     if input_method == t("batch_radio_manual", lang):
+        drug_names_batch = sorted(VALIDATION_DRUGS.keys(), key=str.lower)
+        selected_drugs_batch = st.multiselect(
+            t("batch_drug_selector", lang),
+            options=drug_names_batch,
+            key="batch_drug_selector",
+        )
+        
+        default_text = "\n".join(VALIDATION_DRUGS[d] for d in selected_drugs_batch) if selected_drugs_batch else ""
         batch_smiles = st.text_area(
             t("batch_textarea_label", lang),
+            value=default_text,
             placeholder=t("batch_textarea_placeholder", lang),
             height=200,
         )
