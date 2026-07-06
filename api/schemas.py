@@ -33,3 +33,6 @@ class HealthResponse(BaseModel):
     models_loaded: int
     models_expected: int
     version: str = "2.0"
+    uptime_seconds: int | None = None
+    memory_mb: float | None = None
+    model_files: dict[str, str] | None = None

@@ -1,0 +1,17 @@
+[Unit]
+Description=ADMETox.AI FastAPI server
+After=network.target
+
+[Service]
+Type=simple
+User=admetox
+WorkingDirectory=/opt/admetox
+ExecStart=/opt/admetox/venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

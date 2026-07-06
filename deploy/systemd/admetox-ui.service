@@ -1,0 +1,17 @@
+[Unit]
+Description=ADMETox.AI Streamlit UI
+After=network.target
+
+[Service]
+Type=simple
+User=admetox
+WorkingDirectory=/opt/admetox
+ExecStart=/opt/admetox/venv/bin/python -m streamlit run app.py --server.port=8501 --server.address=127.0.0.1
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -10,21 +10,25 @@ FastAPI REST API for ADMETox.AI
 """
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from src.predict import ADMETPredictor
 from src.features import canonicalize_smiles, compute_rdkit_descriptors
-from src.config import VALIDATION_DRUGS
+from src.config import VALIDATION_DRUGS, MODELS_DIR
 from api.schemas import (
     PredictRequest, PredictResponse, PropertyResult,
     BatchPredictRequest, BatchPredictResponse,
     HealthResponse,
 )
+
+_START_TIME = time.time()
 
 app = FastAPI(
     title="ADMETox.AI API",
@@ -40,6 +44,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed = time.time() - start
+    response.headers["X-Process-Time"] = str(round(elapsed, 4))
+    return response
+
 
 predictor = ADMETPredictor()
 
@@ -68,10 +82,17 @@ def _result_to_properties(result: dict) -> list[PropertyResult]:
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 def health_check():
     n_loaded = len(predictor.models)
+    import psutil
+    mem = psutil.Process().memory_info().rss / 1024 / 1024
+    model_files = {k: str(MODELS_DIR / f"{k}_model.pkl") for k in predictor.models}
     return HealthResponse(
         status="ready" if predictor.is_ready else "degraded",
         models_loaded=n_loaded,
-        models_expected=3,
+        models_expected=5,
+        version="2.0",
+        uptime_seconds=int(time.time() - _START_TIME),
+        memory_mb=round(mem, 1),
+        model_files=model_files,
     )
 
 

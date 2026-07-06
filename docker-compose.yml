@@ -1,8 +1,10 @@
 version: "3.9"
 
 services:
-  admetox:
-    build: .
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8501:8501"
     volumes:
@@ -13,3 +15,19 @@ services:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
     restart: unless-stopped
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - API_PORT=8000
+    restart: unless-stopped
+    command: python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
