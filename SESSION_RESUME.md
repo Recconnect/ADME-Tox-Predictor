@@ -2,23 +2,20 @@
 
 Дата: 2026-07-06  
 Репозиторий: `D:\AI\biotech\adme_proto`  
-Git: 2 коммита, ветка `master`
+Git: 6 коммитов, ветка `master`
 
 ---
 
 ## Быстрый старт (с нуля)
 
 ```powershell
-# 1. Активировать окружение
 cd D:\AI\biotech\adme_proto
 .\venv\Scripts\activate
 
-# 2. Запустить Streamlit UI
-streamlit run app.py
-# Открыть http://localhost:8501
-
-# 3. Переобучить модели (если нужно)
-python run_train.py
+streamlit run app.py                   # Streamlit UI → http://localhost:8501
+python run_train.py                    # переобучить модели
+python -m pytest tests -v              # 31 тест
+python -m team.runner --strategy       # аудит + GTM план
 ```
 
 ---
@@ -26,6 +23,10 @@ python run_train.py
 ## Git история
 
 ```
+0ca3b69 Add Week 1 deliverables: ChemRar cold pitch + Start-1 grant application
+21dc7ab Add Strategist agent: consolidated GTM plan for Russia
+c3f3aa1 Add local team agents: 6-role audit pipeline
+314995a Add SESSION_RESUME.md — full project summary
 d44132c Add investor_kit: strategy analysis, competitive positioning, metrics dashboard
 495b665 v2.0: major refactor - tests, SMILES canonicalization, logging, security
 ```
@@ -36,63 +37,71 @@ d44132c Add investor_kit: strategy analysis, competitive positioning, metrics da
 
 ```
 adme_proto/
-├── app.py                     # Streamlit UI (3 вкладки: Single/Batch/Validation)
-├── run_train.py               # Точка входа для обучения
-├── requirements.txt           # Зависимости
-├── .gitignore
-├── README.md
+├── app.py                       # Streamlit UI (3 tabs)
+├── run_train.py                 # Обучение всех моделей
+├── requirements.txt
+├── SESSION_RESUME.md            # Этот файл
 │
-├── src/
-│   ├── __init__.py
-│   ├── config.py              # Настройки, пути, MODEL_PARAMS, VALIDATION_DRUGS
-│   ├── features.py            # RDKit дескрипторы + Morgan fp, canonicalize
-│   ├── data_loader.py         # Загрузка с Harvard Dataverse, scaffold split
-│   ├── models.py              # LightGBM train/eval, save/load с метаданными
-│   ├── train.py               # Пайплайн: data → features → train → test
-│   └── predict.py             # ADMETPredictor класс (single/batch/validate)
+├── src/                         # Ядро (v2.0)
+│   ├── config.py                # Пути, MODEL_PARAMS, VALIDATION_DRUGS
+│   ├── features.py              # RDKit дескрипторы (30) + Morgan (2048), canonicalization
+│   ├── data_loader.py           # Harvard Dataverse, scaffold split, sanitization
+│   ├── models.py                # LightGBM train/eval, save/load с metadata
+│   ├── train.py                 # Пайплайн обучения
+│   └── predict.py               # ADMETPredictor (single/batch/validate)
 │
-├── tests/
-│   ├── __init__.py
-│   ├── test_features.py       # 17 тестов — SMILES, дескрипторы, fingerprint, batch
-│   ├── test_models.py         # 5 тестов — регрессия, классификация, save/load
-│   └── test_predict.py        # 9 тестов — загрузка, predict, валидация
+├── tests/                       # 31 тестов
+│   ├── test_features.py         # 17 тестов
+│   ├── test_models.py           # 5 тестов
+│   └── test_predict.py          # 9 тестов
 │
-├── data/                      # .tab файлы датасетов (скачиваются автоматически)
-│   ├── solubility.tab
-│   ├── caco2.tab
-│   ├── herg.tab
-│   └── datasets_info.json     # Метаданные по сплитам (auto-generated)
+├── data/                        # .tab датасеты (авто-скачивание)
+├── models/                      # .pkl + training_results.json
+├── logs/                        # app.log
 │
-├── models/                    # .pkl файлы (auto-generated)
-│   ├── solubility_model.pkl
-│   ├── caco2_model.pkl
-│   ├── herg_model.pkl
-│   └── training_results.json
+├── team/                        ##=== КОМАНДА АГЕНТОВ ===##
+│   ├── base.py                  # BaseAgent: чтение артефактов, генерация отчётов
+│   ├── config.py                # 8 CRO, 16 pharma, 7 грантов, 6 конкурентов РФ
+│   ├── runner.py                # Оркестратор (audit / strategy / single)
+│   │
+│   ├── agent_team_lead.py       # Product Owner — стратегический аудит
+│   ├── agent_bioengineer.py     # Хемоинформатик — модели, данные, регуляторика
+│   ├── agent_ml_engineer.py     # ML Engineer — архитектура, production
+│   ├── agent_business_dev.py    # BD — рынок РФ, CRO, GTM
+│   ├── agent_designer.py        # UI/UX — интерфейс, брендинг
+│   ├── agent_financial_expert.py # Финансы — гранты, юнит-экономика
+│   ├── agent_strategist.py      # Strategist — GTM план (18 мес)
+│   └── agent_week1.py           # Week 1 deliverables
 │
-├── logs/                      # Логи (app.log)
+├── team_output/
+│   ├── audit/                   # 6 аудитов (129 находок, 47 рекомендаций)
+│   ├── strategy/
+│   │   └── gtm_plan_russia.md   # GTM план (11 разделов, KPI, roadmap)
+│   └── week1/                   # Week 1 документы
+│       ├── chemrar_pitch.md     # Письмо ChemRar + value prop + outreach
+│       └── start1_application.md # Заявка Старт-1 (структура + бюджет)
 │
-├── promo/                     # Маркетинговые материалы
-│   ├── ADMET_Predictor_Investors_RU.pptx     # Презентация рус (10 сл.)
-│   ├── ADMET_Predictor_Investor_Pitch.pptx   # Презентация eng (10 сл.)
-│   ├── ADMET_Predictor_Executive_Summary.pptx  # Executive summary (6 сл.)
-│   ├── investor_presentation.md              # Текстовая версия
-│   ├── metrics_summary.json                  # Ключевые метрики
-│   ├── charts/                               # Сгенерированные графики
-│   └── generate_*.py                         # Генераторы pptx/charts
+├── promo/                       # Маркетинговые материалы
+│   ├── ADMET_Predictor_Investors_RU.pptx
+│   ├── ADMET_Predictor_Investor_Pitch.pptx
+│   ├── ADMET_Predictor_Executive_Summary.pptx
+│   ├── investor_presentation.md
+│   ├── metrics_summary.json
+│   └── charts/
 │
-└── investor_kit/              # Аналитика для инвесторов (из интервью BIOPTIC)
-    ├── strategy_from_bioptic.md              # Разбор бизнес-модели
-    ├── investor_brief.md                     # Investor brief
-    ├── competitive_positioning.md            # Позиционирование на рынке
-    ├── investor_memo.md                      # One-page memo
-    └── metrics_dashboard.json               # Машиночитаемые метрики
+└── investor_kit/                # Инвесторская аналитика
+    ├── strategy_from_bioptic.md
+    ├── investor_brief.md
+    ├── competitive_positioning.md
+    ├── investor_memo.md
+    └── metrics_dashboard.json
 ```
 
 ---
 
 ## Текущее состояние
 
-### Модели — все метрики превышают целевые
+### Модели
 
 | Модель | Задача | Датасет | Размер | Ключевая метрика | Значение |
 |--------|--------|---------|--------|-------------------|----------|
@@ -102,66 +111,34 @@ adme_proto/
 
 ### Тесты: 31/31 passed
 
-- `test_features.py` — 17 тестов (SMILES валидация, дескрипторы, fingerprint)
-- `test_models.py` — 5 тестов (train, predict, save/load)
-- `test_predict.py` — 9 тестов (inference на реальных молекулах)
+### GTM план для РФ (18 месяцев)
 
-### Команды
+**Ключевые вехи:**
+- **v2.1** (Jul–Sep 2026): Брендинг, лендинг, free tier, hERG расширение
+- **v2.2** (Sep–Jan 2027): LogD7.4, Pgp, FastAPI, Docker, radar chart
+- **v3.0** (Jan–Jul 2027): GNN, ONNX, enterprise features, 5-15 клиентов
+- **Funding**: Старт-1 (₽4M) → Сколково (₽30M) → Pre-seed ($100K) → Seed ($200-500K)
+- **Team**: BD (мес 1) → ML + Bio (мес 3) → Designer (мес 6)
 
-```powershell
-# Запустить UI
-streamlit run app.py
-
-# Запустить тесты
-python -m pytest tests -v
-
-# Обучение
-python run_train.py
-
-# Сгенерировать графики для презентаций
-python promo/generate_charts.py
-
-# Сгенерировать pptx
-python promo/generate_pptx.py
-python promo/generate_pptx_ru.py
-python promo/generate_executive_summary.py
-```
+**Week 1 действия:**
+1. Зарегистрировать юрлицо (ОКВЭД 72.19)
+2. Начать заявку Старт-1 (https://fasie.ru/programs/programma-start/)
+3. Собрать 50 контактов CRO (LinkedIn + Pharmaprojects)
+4. Отправить письмо ChemRar (см. `team_output/week1/chemrar_pitch.md`)
+5. Создать лендинг на русском
 
 ---
 
-## Что было сделано (Session 1)
+## Команда: команды
 
-### Phase 1: MVP
-
-1. Проанализирован план из `D:\AI\biotech\План 1.0.docx`
-2. Создана структура проекта, `requirements.txt`
-3. Установлены: rdkit, pandas, scikit-learn, lightgbm, streamlit
-4. Реализован загрузчик данных с Harvard Dataverse (AqSolDB, Caco-2, hERG)
-5. Реализован scaffold split через Morgan fingerprints + MiniBatchKMeans
-6. 30 RDKit дескрипторов + 2048 Morgan fingerprints
-7. 3 модели LightGBM обучены, сохранены как .pkl
-8. Streamlit UI с 3 табами (Single, Batch, Validation)
-9. Валидация на 10 известных препаратах
-
-### Phase 2: v2.0 Refactor
-
-1. **SMILES canonicalization** — все входы нормализуются
-2. **LRU caching** — дескрипторы и fingerprint кэшируются
-3. **Logging** — вместо print() через модуль logging
-4. **Data integrity** — dedup, NaN check, sanitization
-5. **Error handling** — пустые/невалидные SMILES
-6. **Security** — MAX_UPLOAD_MB, MAX_BATCH_SIZE
-7. **Models metadata** — save_model сохраняет feature_names
-8. **Tests** — 31 тест
-9. **requirements.txt** — убраны неработающие пакеты (tdc, rdkit-pypi)
-
-### Phase 3: Инвесторские материалы
-
-1. Анализ интервью Андрея Дороничева (BIOPTIC) — `business_model.txt`
-2. Разбор бизнес-модели, позиционирование, конкурентный анализ
-3. Презентации pptx (3 шт: RU, EN, Executive Summary)
-4. Графики для презентаций (5 шт)
-5. `investor_kit/` — 5 документов для инвесторов
+```powershell
+python -m team.runner                    # аудит 6 агентов
+python -m team.runner --strategy         # аудит + GTM план
+python -m team.runner --agent=bioengineer   # один агент
+python -m team.agent_week1               # Week 1 документы
+python -m team.agent_week1 --chemrar     # только письмо ChemRar
+python -m team.agent_week1 --grant       # только заявка Старт-1
+```
 
 ---
 
@@ -176,28 +153,31 @@ python promo/generate_executive_summary.py
 | **Feature names warning** | LightGBM — косметический |
 | **Данные** | Harvard Dataverse (ID: 4259610, 4259569, 4259588) |
 | **Caco-2** | Бинаризован при logPapp > -5.5 |
-| **BIOPTIC analogy** | Наш проект = Lead Optimization (их = Hit ID) |
-| **Exit strategy** | M&A в CRO/Big Pharma, оценка $5-15M |
+| **BIOPTIC analogy** | Мы = Lead Optimization (они = Hit ID) |
+| **Exit strategy** | M&A в CRO/Big Pharma, $5-15M |
+| **Конкуренты в РФ** | Прямых нет — ниша свободна |
+| **Гранты РФ** | Старт-1 (₽4M), Сколково (₽30M), РФРИТ (до ₽300M) |
 
 ---
 
 ## Что можно сделать дальше
 
 ### Short-term (дни)
-- [ ] Подавить warnings (MorganGenerator → use_container_width)
-- [ ] Добавить Dockerfile
-- [ ] Развернуть на Streamlit Cloud / Hugging Face Spaces
+- [ ] Подать заявку Старт-1 — `team_output/week1/start1_application.md`
+- [ ] Отправить письмо ChemRar — `team_output/week1/chemrar_pitch.md`
+- [ ] Зарегистрировать юрлицо
+- [ ] Подавить warnings в коде
 
 ### Medium-term (недели)
-- [ ] GNN модель (PyTorch Geometric) +5-10% к метрикам
-- [ ] REST API (FastAPI) для программного доступа
-- [ ] Добавить Pgp, Lipophilicity, Bioavailability
+- [ ] Docker + FastAPI (пункты GTM v2.2)
+- [ ] LogD7.4 + Pgp модели
+- [ ] Лендинг на русском
+- [ ] Статус участника Сколково
 
 ### Long-term (месяцы)
-- [ ] CI/CD (GitHub Actions)
-- [ ] Proprietary data pipeline (партнёрства с CRO)
-- [ ] Fine-tuning на данных клиентов
-- [ ] Series A raise при 50+ клиентах
+- [ ] GNN (PyTorch Geometric)
+- [ ] Enterprise-версия
+- [ ] Seed-раунд $200-500K
 
 ---
 
@@ -206,4 +186,12 @@ python promo/generate_executive_summary.py
 - План: `D:\AI\biotech\План 1.0.docx`
 - Интервью BIOPTIC: `D:\AI\biotech\business_model.txt`
 - Код: `D:\AI\biotech\adme_proto`
-- Логи: `D:\AI\biotech\adme_proto\logs\app.log`
+- GTM план: `team_output/strategy/gtm_plan_russia.md`
+- Аудиты: `team_output/audit/`
+- Week 1: `team_output/week1/`
+
+```
+Последний коммит: 0ca3b69 — Add Week 1 deliverables
+Всего коммитов: 6
+Ветка: master
+```
