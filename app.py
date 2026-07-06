@@ -6,10 +6,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.predict import ADMETPredictor
-from src.features import compute_rdkit_descriptors
+from src.features import compute_rdkit_descriptors, canonicalize_smiles
 from src.feature_importance import get_model_feature_importance
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 from src.i18n import t, translate_class, translate_prop_name, translate_model_name, get_lang, sidebar_lang_selector
+
+
+def draw_molecule(smiles: str) -> str | None:
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import Draw
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return None
+        img = Draw.MolToImage(mol, size=(300, 200))
+        import io
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception:
+        return None
 
 
 def check_lipinski_rule_of_five(desc: dict | None) -> dict:
@@ -90,23 +106,29 @@ with tab1:
             st.error(result["error"])
         else:
             st.success(t("single_success", lang))
-            prop_cols = st.columns(3)
-            col_idx = 0
-            prop_keys = [
-                "Solubility (logS)", "SolubilityClass",
-                "Caco-2 Permeability", "Caco-2 Class",
-                "hERG Toxicity Risk", "hERG Class",
-                "Lipophilicity (logD)",
-                "P-gp Inhibition", "P-gp Class",
-            ]
-            for key in prop_keys:
-                if key in result:
-                    with prop_cols[col_idx % 3]:
+
+            col_left, col_right = st.columns([1, 2])
+            with col_left:
+                img_bytes = draw_molecule(smiles)
+                if img_bytes:
+                    st.image(img_bytes, caption=canonicalize_smiles(smiles) or smiles, width="stretch")
+
+            with col_right:
+                prop_cols = st.columns(2)
+                prop_keys = [
+                    "Solubility (logS)", "SolubilityClass",
+                    "Caco-2 Permeability", "Caco-2 Class",
+                    "hERG Toxicity Risk", "hERG Class",
+                    "Lipophilicity (logD)",
+                    "P-gp Inhibition", "P-gp Class",
+                ]
+                for i, key in enumerate([k for k in prop_keys if k in result]):
+                    with prop_cols[i % 2]:
                         val = result[key]
                         display = f"{val:.3f}" if isinstance(val, float) else str(val)
                         if "Class" in key:
                             bg = color_class(str(val))
-                            label = translate_prop_name(key, lang) if "Class" in key else key
+                            label = translate_prop_name(key, lang)
                             st.markdown(
                                 f'<div style="padding:12px;border-radius:8px;background:{bg}20;'
                                 f'border-left:4px solid {bg}">'
@@ -115,7 +137,6 @@ with tab1:
                             )
                         else:
                             st.metric(translate_prop_name(key, lang), display)
-                    col_idx += 1
 
             lipinski = check_lipinski_rule_of_five(
                 {k: v for k, v in result.items() if k in {

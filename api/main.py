@@ -11,18 +11,24 @@ FastAPI REST API for ADMETox.AI
 
 import sys
 import time
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from src.predict import ADMETPredictor
-from src.features import canonicalize_smiles, compute_rdkit_descriptors
-from src.config import VALIDATION_DRUGS, MODELS_DIR
+from src.features import canonicalize_smiles
+from src.config import VALIDATION_DRUGS, MODELS_DIR, logger
 from api.schemas import (
     PredictRequest, PredictResponse, PropertyResult,
     BatchPredictRequest, BatchPredictResponse,
@@ -30,14 +36,32 @@ from api.schemas import (
 )
 
 _START_TIME = time.time()
+_LANDING_DIR = Path(__file__).resolve().parents[1] / "landing"
+
+limiter = Limiter(key_func=get_remote_address)
 
 REQUEST_COUNT = Counter("admetox_requests_total", "Total requests", ["method", "endpoint"])
 REQUEST_LATENCY = Histogram("admetox_request_latency_seconds", "Request latency", ["endpoint"])
 
+API_KEYS = set()
+_api_key_env = os.environ.get("ADMETOX_API_KEYS", "")
+if _api_key_env:
+    API_KEYS.update(k.strip() for k in _api_key_env.split(",") if k.strip())
+
+security = HTTPBearer(auto_error=False)
+
+
+def verify_api_key(credentials: HTTPAuthorizationCredentials | None = Depends(security)):
+    if not API_KEYS:
+        return
+    if credentials is None or credentials.credentials not in API_KEYS:
+        raise HTTPException(403, "Invalid or missing API key. Set ADMETOX_API_KEYS env var.")
+
+
 app = FastAPI(
     title="ADMETox.AI API",
     description="AI-powered ADME/Tox prediction for drug discovery. "
-                "Predict solubility, Caco-2 permeability, and hERG toxicity from SMILES.",
+                "Predict solubility, Caco-2 permeability, hERG toxicity, lipophilicity, and P-gp from SMILES.",
     version="2.0.0",
     contact={"name": "ADMETox.AI", "url": "https://admetox.ai"},
 )
@@ -48,6 +72,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.middleware("http")
@@ -89,6 +116,18 @@ def _result_to_properties(result: dict) -> list[PropertyResult]:
     return props
 
 
+@app.get("/", include_in_schema=False)
+def serve_landing():
+    index = _LANDING_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return JSONResponse({"status": "ADMETox.AI API is running", "docs": "/docs"})
+
+
+if _LANDING_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(_LANDING_DIR)), name="landing")
+
+
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 def health_check():
     n_loaded = len(predictor.models)
@@ -107,12 +146,14 @@ def health_check():
 
 
 @app.post("/predict", response_model=PredictResponse, tags=["Prediction"])
-def predict_single(req: PredictRequest):
+@limiter.limit("60/minute")
+def predict_single(request: Request, req: PredictRequest, _: None = Depends(verify_api_key)):
     return _do_predict(req.smiles)
 
 
 @app.post("/batch", response_model=BatchPredictResponse, tags=["Prediction"])
-def predict_batch(req: BatchPredictRequest):
+@limiter.limit("10/minute")
+def predict_batch(request: Request, req: BatchPredictRequest, _: None = Depends(verify_api_key)):
     n = len(req.smiles)
     if n > 10000:
         raise HTTPException(400, f"Batch size {n} exceeds limit 10000")

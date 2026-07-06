@@ -13,3 +13,5 @@ python-pptx>=1.0.2
 fastapi>=0.110
 uvicorn>=0.29
 psutil>=5.9
+prometheus-client>=0.20
+slowapi>=0.1.10
