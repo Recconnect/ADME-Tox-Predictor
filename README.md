@@ -173,23 +173,6 @@ python -m pytest tests/test_predict.py -v
 | `DOMAIN` | for SSL | — | Domain for Let's Encrypt |
 | `SSL_EMAIL` | for SSL | — | Email for Let's Encrypt |
 
-## Client Engagement (Separate Project)
-
-Automated outreach system for product promotion and investor relations:
-
-**Location:** `./client_engagement/`
-
-**7 specialized agents:**
-1. GitHub Agent — auto-release, changelog, issue responses
-2. Content Agent — article generation via LLM
-3. Investor Agent — email outreach to 66 biotech investors
-4. Feedback Agent — GitHub feedback collection
-5. Conference Agent — conference tracking
-6. Social Media Agent — LinkedIn, Twitter, Medium posts
-7. Metrics Agent — weekly reports
-
-See `client_engagement/README.md` for details.
-
 ## Data Sources
 
 - **AqSolDB** — water solubility (9,982 molecules) — Harvard Dataverse ID: 4259610
