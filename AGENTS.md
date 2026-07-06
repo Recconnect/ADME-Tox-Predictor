@@ -88,12 +88,6 @@ adme_proto/
 ├── models/           # 10 .pkl моделей (вшиты в Docker-образ)
 ├── data/             # .tab датасеты
 ├── landing/          # Landing page (static)
-├── agents/           # Outreach agents (НЕ в Docker)
-│   ├── core/         # LLM, Email, GitHub клиенты
-│   ├── tasks/        # GitHub release, content, outreach, metrics
-│   ├── data/         # investors.csv, metrics.db, articles/
-│   ├── coordinator.py # Оркестратор
-│   └── start.bat     # Ярлык запуска
 ├── deploy/
 │   ├── nginx/        # Dockerfile + конфиг для nginx контейнера
 │   ├── nginx.conf    # Production nginx (bare-metal)
@@ -126,91 +120,22 @@ adme_proto/
 | `DOMAIN` | для SSL | — |
 | `SSL_EMAIL` | для SSL | — |
 
-## 5. Outreach Agents (модуль продвижения)
+## 5. Client Engagement (отдельный проект)
 
-**Расположение:** `agents/` (НЕ входит в Docker-образ)
+**Расположение:** `D:\AI\biotech\client_engagement\` (отдельный проект, НЕ входит в основной репозиторий)
 
 **Назначение:** Автоматизация продвижения продукта и привлечения инвесторов.
 
-### Архитектура
+### Документация
 
-```
-agents/
-├── core/                    # Базовые клиенты
-│   ├── llm.py              # OpenAI API (GPT-4o-mini)
-│   ├── email_sender.py     # SMTP (Яндекс.Почта)
-│   └── github_client.py    # GitHub API (PyGithub)
-│
-├── tasks/                   # Бизнес-логика агентов
-│   ├── github_release.py   # Автогенерация changelog + release
-│   ├── content_writer.py   # Генерация статей через LLM
-│   ├── investor_outreach.py # Email outreach инвесторам
-│   └── metrics_collector.py # Сбор метрик, еженедельные отчёты
-│
-├── data/                    # Базы данных
-│   ├── investors.csv       # 70+ биотех/healthtech инвесторов
-│   ├── metrics.db          # SQLite для метрик
-│   ├── email_log.db        # Лог отправленных писем
-│   └── articles/           # Сгенерированные статьи
-│
-├── coordinator.py          # Оркестратор (расписание)
-├── config.yml              # Конфигурация
-├── .env                    # Секреты (не коммитится)
-└── start.bat               # Ярлык запуска (Windows)
-```
+Полная документация находится в `D:\AI\biotech\client_engagement\README.md`
 
-### Расписание задач
-
-| Задача | Частота | Описание |
-|--------|---------|----------|
-| GitHub release | ежедневно 10:00 | Changelog + release при коммитах |
-| Автоответы на issues | ежедневно 10:00 | Шаблонные ответы через LLM |
-| Сбор feedback | ежедневно 10:00 | Из GitHub issues, классификация |
-| Отслеживание конференций | ежедневно 10:00 | 10 конференций, дедлайны CFP |
-| Генерация статьи | понедельник 09:00 | Статья для Medium/Habr/VC.ru |
-| Outreach инвесторам | понедельник 09:00 | Макс 5 писем/неделю |
-| Follow-up инвесторам | понедельник 09:00 | Напоминания через 7 дней |
-| Публикация в соцсети | понедельник 09:00 | LinkedIn, Twitter, Medium |
-| Еженедельный отчёт | понедельник 09:00 | Метрики + email на your_email@example.com |
-
-### Команды запуска
+### Быстрый запуск
 
 ```bash
-# Ярлык запуска (Windows)
-agents\start.bat
-
-# Показать статус всех агентов
-python -m coordinator.coordinator status
-
-# Запустить ежедневные задачи
-python -m coordinator.coordinator daily
-
-# Запустить еженедельные задачи
-python -m coordinator.coordinator weekly
-
-# Запустить все задачи
-python -m coordinator.coordinator all
-
-# Запустить планировщик (постоянная работа)
-python -m coordinator.coordinator schedule
+cd D:\AI\biotech\client_engagement
+start.bat
 ```
-
-### Настройка
-
-1. Установить зависимости: `pip install -r requirements.txt`
-2. Создать `.env` из `.env.example`
-3. Добавить `OPENAI_API_KEY` (https://platform.openai.com/api-keys)
-4. Добавить `EMAIL_PASSWORD` (app-specific password для Яндекс.Почты)
-5. GitHub токен уже настроен
-
-### Бюджет
-
-| Сервис | Стоимость |
-|--------|-----------|
-| OpenAI API (GPT-4o-mini) | ~$5/мес |
-| GitHub API | Бесплатно |
-| Email (Яндекс.Почта) | Бесплатно |
-| **Итого** | **~$5/мес** |
 
 ### Агенты (7 штук)
 
@@ -221,3 +146,10 @@ python -m coordinator.coordinator schedule
 5. **Conference Agent** — отслеживание 10 конференций, дедлайны CFP
 6. **Social Media Agent** — генерация постов для LinkedIn, Twitter, Medium
 7. **Metrics Agent** — сбор метрик, еженедельные отчёты
+
+### Связь с основным проектом
+
+- **GitHub**: https://github.com/Recconnect/ADME-Tox-Predictor
+- **Основной код**: `D:\AI\biotech\adme_proto\`
+- **Модели**: `D:\AI\biotech\adme_proto\models\`
+- **API**: `D:\AI\biotech\adme_proto\api\`
