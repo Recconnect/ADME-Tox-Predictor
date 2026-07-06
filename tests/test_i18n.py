@@ -16,15 +16,15 @@ def test_all_keys_present():
 
 
 def test_t_function_en():
-    assert t("app_title", "en") == "ADMETox.AI"
-    assert t("single_button", "en") == "Predict"
+    assert t("app_title", "en") == "ADMETox.AI \u2014 AI Drug Screener"
+    assert t("single_button", "en") == "Analyze"
 
 
 def test_t_function_ru():
     title = t("app_title", "ru")
     assert isinstance(title, str) and len(title) > 0
     button = t("single_button", "ru")
-    assert button == "Рассчитать"
+    assert button == "Анализировать"
 
 
 def test_t_with_format():
@@ -44,14 +44,14 @@ def test_translate_class():
 def test_translate_prop_name():
     ru = translate_prop_name("Solubility (logS)", "ru")
     assert "Растворимость" in ru
-    assert translate_prop_name("Solubility (logS)", "en") == "Solubility (logS)"
+    assert translate_prop_name("Solubility (logS)", "en") == "Water Solubility"
 
 
 def test_translate_model_name():
-    assert translate_model_name("solubility", "ru") == "Растворимость (logS)"
-    assert translate_model_name("caco2", "ru") == "Проницаемость Caco-2"
-    assert translate_model_name("herg", "ru") == "Токсичность hERG"
-    assert translate_model_name("solubility", "en") == "Solubility (logS)"
+    assert translate_model_name("solubility", "ru") == "Растворимость в воде"
+    assert translate_model_name("caco2", "ru") == "Проницаемость кишечника (Caco-2)"
+    assert translate_model_name("herg", "ru") == "Безопасность для сердца (hERG)"
+    assert translate_model_name("solubility", "en") == "Water Solubility"
 
 
 def test_fallback_key():
@@ -60,9 +60,5 @@ def test_fallback_key():
 
 def test_all_model_names_present():
     expected = {"solubility", "caco2", "herg", "lipophilicity", "pgp"}
-    for lang in ["en", "ru"]:
-        names = STRINGS[lang]
-        model_keys = [k for k in names if k == f"fi_expander"]
-        assert model_keys or True
     for m in expected:
         assert translate_model_name(m, "en") != m or m in STRINGS["en"]

@@ -45,3 +45,6 @@ users.json
 
 # Python
 *.pyc
+
+# Streamlit (keep config.toml, ignore cache)
+.streamlit/secrets.toml

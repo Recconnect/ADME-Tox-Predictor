@@ -43,12 +43,12 @@ def _score_ppbr(val: float) -> float:
 RADAR_CONFIG = [
     ("Solubility (logS)", _score_solubility),
     ("Caco-2 Permeability", _score_caco2),
-    ("hERG Safety", _score_herg),
+    ("hERG Toxicity Risk", _score_herg),
     ("Lipophilicity (logD)", _score_lipophilicity),
-    ("P-gp Safety", _score_pgp),
-    ("CYP3A4 Safety", _score_cyp),
-    ("CYP2D6 Safety", _score_cyp),
-    ("Ames Safety", _score_ames),
+    ("P-gp Inhibition", _score_pgp),
+    ("CYP3A4 Inhibition", _score_cyp),
+    ("CYP2D6 Inhibition", _score_cyp),
+    ("Ames Mutagenicity", _score_ames),
     ("Bioavailability", _score_bioavailability),
     ("PPB (plasma binding)", _score_ppbr),
 ]
@@ -68,29 +68,29 @@ SOURCE_KEYS = [
 ]
 
 LABEL_KEYS_EN = [
-    "Solubility",
-    "Caco-2\nPermeability",
-    "hERG Safety",
-    "Lipophilicity",
-    "P-gp Safety",
-    "CYP3A4\nSafety",
-    "CYP2D6\nSafety",
-    "Ames Safety",
-    "Bioavailability",
-    "PPB Binding",
+    "Water\nSolubility",
+    "Gut\nAbsorption",
+    "Heart\nSafety",
+    "Fat\nSolubility",
+    "Drug\nResistance",
+    "Liver\nMetabolism",
+    "Liver\nMetabolism",
+    "Genetic\nSafety",
+    "Blood\nAvailability",
+    "Protein\nBinding",
 ]
 
 LABEL_KEYS_RU = [
-    "Растворимость",
-    "Caco-2\nпроницаемость",
-    "hERG\nбезопасность",
-    "Липофильность",
-    "P-gp\nбезопасность",
-    "CYP3A4\nбезопасность",
-    "CYP2D6\nбезопасность",
-    "Ames\nбезопасность",
-    "Биодоступность",
-    "Связ. с\nбелками",
+    "Растворимость\nв воде",
+    "Всасывание\nкишечник",
+    "Безопасность\nсердца",
+    "Жиро-\nрастворимость",
+    "Устойчивость\nк терапии",
+    "Метаболизм\nв печени",
+    "Метаболизм\nв печени",
+    "Генетическая\nбезопасность",
+    "Доступность\nв крови",
+    "Связывание\nс белками",
 ]
 
 

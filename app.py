@@ -18,20 +18,100 @@ from src.usage import get_stats
 from src.radar import compute_scores, plot_radar
 from src.pdf_report import generate_pdf
 
+_CSS = """
+<style>
+.adme-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border-left: 5px solid;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: transform 0.1s;
+}
+.adme-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.adme-card .label {
+  font-size: 0.8rem;
+  color: #5a6a7a;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.adme-card .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+.health-score {
+  text-align: center;
+  padding: 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+}
+.health-score .number {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.health-score .label {
+  font-size: 0.85rem;
+  color: #5a6a7a;
+  margin-top: 4px;
+}
+.health-score .desc {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.group-header {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2c3e50;
+  padding: 8px 0 4px 0;
+  border-bottom: 2px solid #eef0f2;
+  margin-top: 12px;
+}
+.progress-bg {
+  height: 6px;
+  background: #eef0f2;
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.chip-btn {
+  display: inline-block;
+  padding: 4px 14px;
+  margin: 4px 6px 4px 0;
+  border-radius: 20px;
+  background: #eef0f2;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+.chip-btn:hover {
+  background: #d5dbe0;
+}
+</style>
+"""
 
-def draw_molecule(smiles: str) -> str | None:
+
+def draw_molecule(smiles: str) -> bytes | None:
     try:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return None
-        img = Draw.MolToImage(mol, size=(300, 200))
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        return buf.getvalue()
-    except Exception:
-        return None
-        img = Draw.MolToImage(mol, size=(300, 200))
-        import io
+        img = Draw.MolToImage(mol, size=(320, 240))
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue()
@@ -77,6 +157,65 @@ def color_class(val: str) -> str:
     return "#ffc107"
 
 
+def compute_health_score(result: dict) -> tuple[int, str]:
+    score = 0
+    count = 0
+    prop_checks = [
+        ("Solubility (logS)", lambda v: v > -4),
+        ("Caco-2 Permeability", lambda v: v > 0.5),
+        ("hERG Toxicity Risk", lambda v: v < 0.5),
+        ("Lipophilicity (logD)", lambda v: 0 < v < 5),
+        ("P-gp Inhibition", lambda v: v < 0.5),
+        ("CYP3A4 Inhibition", lambda v: v < 0.5),
+        ("CYP2D6 Inhibition", lambda v: v < 0.5),
+        ("Ames Mutagenicity", lambda v: v < 0.5),
+        ("Bioavailability", lambda v: v > 0.5),
+    ]
+    for key, check in prop_checks:
+        val = result.get(key)
+        if val is not None:
+            score += 1 if check(val) else 0
+            count += 1
+    pp_val = result.get("PPB (plasma binding)")
+    if pp_val is not None:
+        score += 1 if 50 <= pp_val <= 95 else 0
+        count += 1
+    pct = int(round(score / count * 100)) if count > 0 else 0
+    lang = get_lang()
+    if pct >= 80:
+        level = t("health_excellent", lang)
+    elif pct >= 60:
+        level = t("health_good", lang)
+    elif pct >= 40:
+        level = t("health_fair", lang)
+    else:
+        level = t("health_poor", lang)
+    return pct, level
+
+
+def _prop_to_pct(key: str, result: dict) -> int:
+    val = result.get(key)
+    if val is None:
+        return 50
+    ranges = {
+        "Solubility (logS)": (-8, 2),
+        "Caco-2 Permeability": (0, 1),
+        "hERG Toxicity Risk": (0, 1),
+        "Lipophilicity (logD)": (-2, 6),
+        "P-gp Inhibition": (0, 1),
+        "CYP3A4 Inhibition": (0, 1),
+        "CYP2D6 Inhibition": (0, 1),
+        "Ames Mutagenicity": (0, 1),
+        "Bioavailability": (0, 1),
+        "PPB (plasma binding)": (0, 100),
+    }
+    lo, hi = ranges.get(key, (0, 1))
+    inv = key in ("hERG Toxicity Risk", "P-gp Inhibition", "CYP3A4 Inhibition", "CYP2D6 Inhibition", "Ames Mutagenicity")
+    pct = (val - lo) / (hi - lo) * 100
+    pct = max(0, min(100, pct))
+    return 100 - int(pct) if inv else int(pct)
+
+
 lang = get_lang()
 
 st.set_page_config(
@@ -85,6 +224,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st.markdown(_CSS, unsafe_allow_html=True)
 
 st.title(t("app_title", lang))
 st.markdown(t("app_subtitle", lang))
@@ -99,7 +240,6 @@ def get_predictor():
 
 
 predictor = get_predictor()
-
 if not predictor.is_ready:
     st.stop()
 
@@ -108,16 +248,35 @@ tab1, tab2, tab3, tab4 = st.tabs([
     t("tab_validation", lang), t("tab_features", lang),
 ])
 
+# ───────── Tab 1: Single Molecule ─────────
 with tab1:
     st.header(t("single_header", lang))
+
+    drug_names = sorted(VALIDATION_DRUGS.keys(), key=str.lower)
+    drug_names.insert(0, "")
+    selected_drug = st.selectbox(
+        t("single_drug_selector", lang),
+        options=drug_names,
+        key="drug_selector",
+    )
+    if selected_drug:
+        st.session_state["single_smiles"] = VALIDATION_DRUGS[selected_drug]
+
     smiles = st.text_input(
         t("single_input_label", lang),
-        placeholder=t("single_placeholder", lang),
+        placeholder="CCO",
         key="single_smiles",
         help=t("single_help", lang),
     )
 
-    if st.button(t("single_button", lang), type="primary") and smiles:
+    chips_cols = st.columns(4)
+    example_drugs = {"Aspirin": VALIDATION_DRUGS["Aspirin"], "Caffeine": VALIDATION_DRUGS["Caffeine"], "Ibuprofen": VALIDATION_DRUGS["Ibuprofen"], "Paracetamol": VALIDATION_DRUGS["Paracetamol"]}
+    for i, (name, smi) in enumerate(example_drugs.items()):
+        if chips_cols[i % 4].button(name, key=f"chip_{name}", use_container_width=True):
+            st.session_state["single_smiles"] = smi
+            st.rerun()
+
+    if st.button(t("single_button", lang), type="primary", key="predict_btn") and smiles:
         with st.spinner(t("single_spinner", lang)):
             result = predictor.predict_single(smiles)
 
@@ -126,14 +285,24 @@ with tab1:
         else:
             st.success(t("single_success", lang))
 
-            col_left, col_right = st.columns([1, 2])
+            pct, level = compute_health_score(result)
+            score_color = "#00c853" if pct >= 60 else "#ffc107" if pct >= 40 else "#ff1744"
+            st.markdown(
+                f'<div class="health-score">'
+                f'<div class="number" style="color:{score_color}">{pct}%</div>'
+                f'<div class="label">{t("health_score", lang)}</div>'
+                f'<div class="desc" style="color:{score_color}">{level}</div>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+            col_left, col_right = st.columns([1, 1.6])
             with col_left:
                 img_bytes = draw_molecule(smiles)
                 if img_bytes:
-                    st.image(img_bytes, caption=canonicalize_smiles(smiles) or smiles, width="stretch")
+                    st.image(img_bytes, caption=canonicalize_smiles(smiles) or smiles)
 
             with col_right:
-                prop_cols = st.columns(2)
                 prop_keys = [
                     "Solubility (logS)", "SolubilityClass",
                     "Caco-2 Permeability", "Caco-2 Class",
@@ -146,26 +315,37 @@ with tab1:
                     "Bioavailability", "Bioavailability Class",
                     "PPB (plasma binding)", "PPB Class",
                 ]
-                for i, key in enumerate([k for k in prop_keys if k in result]):
-                    with prop_cols[i % 2]:
-                        val = result[key]
-                        display = f"{val:.3f}" if isinstance(val, float) else str(val)
-                        if "Class" in key:
-                            bg = color_class(str(val))
+                groups = {
+                    "group_absorption": ["Solubility (logS)", "SolubilityClass", "Caco-2 Permeability", "Caco-2 Class", "Lipophilicity (logD)"],
+                    "group_safety": ["hERG Toxicity Risk", "hERG Class", "Ames Mutagenicity", "Ames Class"],
+                    "group_metabolism": ["P-gp Inhibition", "P-gp Class", "CYP3A4 Inhibition", "CYP3A4 Class", "CYP2D6 Inhibition", "CYP2D6 Class"],
+                    "group_pk": ["Bioavailability", "Bioavailability Class", "PPB (plasma binding)", "PPB Class"],
+                }
+                for group_key, keys in groups.items():
+                    available = [k for k in keys if k in result]
+                    if not available:
+                        continue
+                    st.markdown(f'<div class="group-header">{t(group_key, lang)}</div>', unsafe_allow_html=True)
+                    cols = st.columns(2)
+                    for i2, key in enumerate(available):
+                        with cols[i2 % 2]:
+                            val = result[key]
+                            is_class = "Class" in key
+                            pct_val = _prop_to_pct(key, result)
+                            bg_color = color_class(str(val)) if is_class else "#1a5276"
+                            display = f"{val:.3f}" if isinstance(val, float) else str(val)
                             label = translate_prop_name(key, lang)
                             st.markdown(
-                                f'<div style="padding:12px;border-radius:8px;background:{bg}20;'
-                                f'border-left:4px solid {bg}">'
-                                f'<small>{label}</small><br><strong>{display}</strong></div>',
+                                f'<div class="adme-card" style="border-left-color:{bg_color}">'
+                                f'<div class="label">{label}</div>'
+                                f'<div class="value" style="color:{bg_color}">{display}</div>'
+                                f'<div class="progress-bg"><div class="progress-fill" style="width:{pct_val}%;background:{bg_color}"></div></div>'
+                                f"</div>",
                                 unsafe_allow_html=True,
                             )
-                        else:
-                            st.metric(translate_prop_name(key, lang), display)
 
             lipinski = check_lipinski_rule_of_five(
-                {k: v for k, v in result.items() if k in {
-                    "MolWt", "LogP", "NumHDonors", "NumHAcceptors",
-                }}
+                {k: v for k, v in result.items() if k in {"MolWt", "LogP", "NumHDonors", "NumHAcceptors"}}
             )
             msg = t("lipinski_info", lang, detail=lipinski["detail"])
             if not lipinski["passed"]:
@@ -188,17 +368,7 @@ with tab1:
                 pass
 
             with st.expander(t("single_expander", lang)):
-                prop_keys_set = set([
-                    "Solubility (logS)", "SolubilityClass",
-                    "Caco-2 Permeability", "Caco-2 Class",
-                    "hERG Toxicity Risk", "hERG Class",
-                    "Lipophilicity (logD)", "P-gp Inhibition", "P-gp Class",
-                    "CYP3A4 Inhibition", "CYP3A4 Class",
-                    "CYP2D6 Inhibition", "CYP2D6 Class",
-                    "Ames Mutagenicity", "Ames Class",
-                    "Bioavailability", "Bioavailability Class",
-                    "PPB (plasma binding)", "PPB Class",
-                ])
+                prop_keys_set = set(prop_keys)
                 desc_keys = [k for k in result.keys() if k not in prop_keys_set | {"error", "SMILES"}]
                 desc_data = {k: result[k] for k in desc_keys if k in result}
                 if desc_data:
@@ -206,6 +376,7 @@ with tab1:
                     desc_df.columns = [t("desc_col_name", lang), t("desc_col_value", lang)]
                     st.dataframe(desc_df, width="stretch")
 
+# ───────── Tab 2: Batch ─────────
 with tab2:
     st.header(t("batch_header", lang))
     input_method = st.radio(
@@ -216,7 +387,7 @@ with tab2:
 
     if input_method == t("batch_radio_manual", lang):
         batch_smiles = st.text_area(
-            "SMILES (one per line)",
+            t("batch_textarea_label", lang),
             placeholder=t("batch_textarea_placeholder", lang),
             height=200,
         )
@@ -268,6 +439,7 @@ with tab2:
                 "predictions.csv", "text/csv",
             )
 
+# ───────── Tab 3: Validation / Known Drugs ─────────
 with tab3:
     st.header(t("val_header", lang))
     if st.button(t("val_button", lang), type="primary"):
@@ -295,18 +467,18 @@ with tab3:
             st.markdown(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
             summary = {}
             if "Solubility (logS)" in df_val.columns:
-                summary["Avg LogS"] = round(df_val["Solubility (logS)"].mean(), 3)
+                summary["Avg Water Solubility"] = round(df_val["Solubility (logS)"].mean(), 3)
             if "Caco-2 Class" in df_val.columns:
                 high = (df_val["Caco-2 Class"] == "High permeability").sum()
-                summary["High Caco-2"] = f"{high}/{len(df_val)}"
+                summary["High Gut Absorption"] = f"{high}/{len(df_val)}"
             if "hERG Class" in df_val.columns:
                 toxic = (df_val["hERG Class"] == "Toxic (high risk)").sum()
-                summary["hERG Toxic"] = f"{toxic}/{len(df_val)}"
+                summary["Cardiotoxicity Risk"] = f"{toxic}/{len(df_val)}"
             if "Lipophilicity (logD)" in df_val.columns:
-                summary["Avg LogD"] = round(df_val["Lipophilicity (logD)"].mean(), 3)
+                summary["Avg Fat Solubility"] = round(df_val["Lipophilicity (logD)"].mean(), 3)
             if "P-gp Class" in df_val.columns:
                 inhib = (df_val["P-gp Class"] == "Inhibitor (high risk)").sum()
-                summary["P-gp Inhibitors"] = f"{inhib}/{len(df_val)}"
+                summary["Drug Resistance Risk"] = f"{inhib}/{len(df_val)}"
             st.json(summary)
             st.download_button(
                 t("val_download", lang),
@@ -314,6 +486,7 @@ with tab3:
                 "validation_results.csv", "text/csv",
             )
 
+# ───────── Tab 4: How It Works ─────────
 with tab4:
     st.header(t("fi_header", lang))
     st.markdown(t("fi_subtitle", lang))
@@ -331,14 +504,13 @@ with tab4:
             st.dataframe(df, hide_index=True, use_container_width=True)
             st.caption(t("fi_caption", lang, value=f"{imp['fingerprint_total_importance']:.2f}"))
 
+# ───────── Sidebar ─────────
 with st.sidebar:
     sidebar_lang_selector()
     st.header(t("sidebar_about", lang))
     metrics_table = f"""
-**{t('sidebar_about', lang)}**
-
 | {t('sidebar_property', lang)} | {t('sidebar_metric', lang)} |
-|---|---|---|
+|---|---|
 | {translate_model_name('solubility', lang)} | R² = **0.806** |
 | {translate_model_name('caco2', lang)} | AUC = **0.932** |
 | {translate_model_name('herg', lang)} | AUC = **0.846** |
@@ -349,9 +521,7 @@ with st.sidebar:
 | {translate_model_name('ames', lang)} | AUC = **0.884** |
 | {translate_model_name('bioavailability', lang)} | AUC = **0.701** |
 | {translate_model_name('ppbr', lang)} | R² = **0.425** |
-
-{t('sidebar_built_with', lang)}
-"""
+    """
     st.markdown(metrics_table)
     st.header(t("sidebar_lipinski", lang))
     st.markdown(t("sidebar_lipinski_rules", lang))
