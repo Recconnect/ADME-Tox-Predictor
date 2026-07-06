@@ -191,11 +191,14 @@ def save_model(model, model_path, metadata=None):
 
 
 _CHECKSUMS: dict[str, str] = {}
+_CHECKSUMS_LOADED: bool = False
 
 
 def _load_checksums():
+    global _CHECKSUMS_LOADED
     checksums_path = Path(__file__).resolve().parents[1] / "models" / "checksums.txt"
     if not checksums_path.exists():
+        _CHECKSUMS_LOADED = True
         return
     for line in checksums_path.read_text().splitlines():
         line = line.strip()
@@ -204,13 +207,14 @@ def _load_checksums():
         parts = line.split(None, 1)
         if len(parts) == 2:
             _CHECKSUMS[parts[1]] = parts[0]
+    _CHECKSUMS_LOADED = True
 
 
 def _verify_model_integrity(model_path: Path) -> bool:
-    if not _CHECKSUMS:
+    if not _CHECKSUMS_LOADED:
         _load_checksums()
     if not _CHECKSUMS:
-        logger.warning("No checksums file found. Skipping model integrity check.")
+        logger.debug("No checksums file found. Skipping model integrity check.")
         return True
     fname = model_path.name
     expected = _CHECKSUMS.get(fname)

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADMETox.AI - Запуск</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 5px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .btn.secondary {
+            background: #6c757d;
+        }
+        .btn.secondary:hover {
+            background: #5a6268;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 ADMETox.AI</h1>
+        <p>AI-платформа для предсказания ADME/Tox свойств молекул</p>
+        
+        <div id="status" class="status">
+            Проверка статуса сервера...
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Инструкция по запуску:</h3>
+            <ol>
+                <li>Запустите файл <code>start_simple.bat</code> (двойной клик)</li>
+                <li>Дождитесь появления сообщения "You can now view your Streamlit app"</li>
+                <li>Откройте браузер и перейдите по ссылке ниже</li>
+                <li>Введите SMILES молекулы (например: <code>CCO</code> для этанола)</li>
+                <li>Нажмите "Predict" для получения предсказаний</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:8501" target="_blank" class="btn">
+                🚀 Открыть ADMETox.AI
+            </a>
+            <a href="http://127.0.0.1:8501" target="_blank" class="btn secondary">
+                🔄 Альтернативная ссылка (127.0.0.1)
+            </a>
+        </div>
+
+        <div class="instructions">
+            <h3>🧪 Тестовые молекулы:</h3>
+            <ul>
+                <li><strong>Этанол:</strong> <code>CCO</code></li>
+                <li><strong>Аспирин:</strong> <code>CC(=O)Oc1ccccc1C(=O)O</code></li>
+                <li><strong>Кофеин:</strong> <code>CN1C=NC2=C1C(=O)N(C(=O)N2C)C</code></li>
+                <li><strong>Ибупрофен:</strong> <code>CC(C)Cc1ccc(cc1)C(C)C(=O)O</code></li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h3>❓ Если не работает:</h3>
+            <ol>
+                <li>Убедитесь, что <code>start_simple.bat</code> запущен</li>
+                <li>Проверьте, что в окне cmd нет ошибок</li>
+                <li>Попробуйте альтернативную ссылку (127.0.0.1)</li>
+                <li>Проверьте, не заблокирован ли порт 8501 firewall</li>
+                <li>Перезапустите <code>start_simple.bat</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            const statusDiv = document.getElementById('status');
+            try {
+                const response = await fetch('http://localhost:8501/_stcore/health', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '✅ Сервер работает! Можете открыть приложение.';
+                } else {
+                    throw new Error('Server responded with error');
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Сервер не отвечает. Запустите start_simple.bat и обновите страницу.';
+            }
+        }
+
+        checkStatus();
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>
