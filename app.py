@@ -319,11 +319,11 @@ with st.sidebar:
 | {translate_model_name('herg', lang)} | AUC = **0.846** |
 | {translate_model_name('lipophilicity', lang)} | R² = **0.651** |
 | {translate_model_name('pgp', lang)} | AUC = **0.964** |
-| {translate_model_name('cyp3a4', lang)} | — |
-| {translate_model_name('cyp2d6', lang)} | — |
-| {translate_model_name('ames', lang)} | — |
-| {translate_model_name('bioavailability', lang)} | — |
-| {translate_model_name('ppbr', lang)} | — |
+| {translate_model_name('cyp3a4', lang)} | AUC = **0.903** |
+| {translate_model_name('cyp2d6', lang)} | AUC = **0.883** |
+| {translate_model_name('ames', lang)} | AUC = **0.884** |
+| {translate_model_name('bioavailability', lang)} | AUC = **0.701** |
+| {translate_model_name('ppbr', lang)} | R² = **0.425** |
 
 {t('sidebar_built_with', lang)}
 """
