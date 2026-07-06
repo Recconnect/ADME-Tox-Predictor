@@ -1,6 +1,10 @@
 import os
 import logging
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings("ignore", message="X does not have valid feature names")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="rdkit.Chem.rdMolDescriptors")
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"

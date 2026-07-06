@@ -21,7 +21,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
+
+APP_REGISTRY = CollectorRegistry()
+METRIC_COUNTERS: dict = {}
+METRIC_HISTOGRAMS: dict = {}
+
+
+def _get_counter(name, documentation, labelnames):
+    if name not in METRIC_COUNTERS:
+        METRIC_COUNTERS[name] = Counter(name, documentation, labelnames, registry=APP_REGISTRY)
+    return METRIC_COUNTERS[name]
+
+
+def _get_histogram(name, documentation, labelnames):
+    if name not in METRIC_HISTOGRAMS:
+        METRIC_HISTOGRAMS[name] = Histogram(name, documentation, labelnames, registry=APP_REGISTRY)
+    return METRIC_HISTOGRAMS[name]
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -44,8 +60,8 @@ _LANDING_DIR = Path(__file__).resolve().parents[1] / "landing"
 
 limiter = Limiter(key_func=get_remote_address)
 
-REQUEST_COUNT = Counter("admetox_requests_total", "Total requests", ["method", "endpoint"])
-REQUEST_LATENCY = Histogram("admetox_request_latency_seconds", "Request latency", ["endpoint"])
+REQUEST_COUNT = _get_counter("admetox_requests_total", "Total requests", ["method", "endpoint"])
+REQUEST_LATENCY = _get_histogram("admetox_request_latency_seconds", "Request latency", ["endpoint"])
 
 API_KEYS = set()
 _api_key_env = os.environ.get("ADMETOX_API_KEYS", "")
@@ -243,7 +259,7 @@ def predict_pdf(request: Request, smiles: str, lang: str = "ru", _: None = Depen
 
 @app.get("/metrics", tags=["System"])
 def get_metrics():
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(content=generate_latest(APP_REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.post("/register", response_model=AuthResponse, tags=["Auth"])

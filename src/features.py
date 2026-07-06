@@ -1,10 +1,9 @@
 import functools
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import Descriptors, rdMolDescriptors, AllChem
 
 from src.config import logger, FINGERPRINT_PARAMS
-
-_sanitize_ops = Chem.SANITIZE_ALL
 
 
 def canonicalize_smiles(smiles: str) -> str | None:
@@ -23,13 +22,7 @@ def is_valid_smiles(smiles: str) -> bool:
     return mol is not None and mol.GetNumAtoms() > 0
 
 
-@functools.lru_cache(maxsize=16384)
-def _compute_rdkit_descriptors_cached(smiles: str) -> dict | None:
-    mol = Chem.MolFromSmiles(smiles, sanitize=True)
-    if mol is None or mol.GetNumAtoms() == 0:
-        return None
-    from rdkit.Chem import Descriptors, rdMolDescriptors
-
+def _descriptors_from_mol(mol: Chem.Mol) -> dict:
     return {
         "MolWt": Descriptors.MolWt(mol),
         "LogP": Descriptors.MolLogP(mol),
@@ -63,68 +56,60 @@ def _compute_rdkit_descriptors_cached(smiles: str) -> dict | None:
     }
 
 
-def compute_rdkit_descriptors(smiles: str) -> dict | None:
-    canon = canonicalize_smiles(smiles)
-    if canon is None:
-        return None
-    result = _compute_rdkit_descriptors_cached(canon)
-    if result is None:
-        return None
-    return dict(result)
-
-
-@functools.lru_cache(maxsize=16384)
-def _morgan_fingerprint_cached(smiles: str) -> np.ndarray | None:
-    mol = Chem.MolFromSmiles(smiles, sanitize=True)
-    if mol is None or mol.GetNumAtoms() == 0:
-        return None
-    from rdkit.Chem import AllChem
-
+def _fingerprint_from_mol(mol: Chem.Mol) -> np.ndarray:
     radius = FINGERPRINT_PARAMS["radius"]
     n_bits = FINGERPRINT_PARAMS["n_bits"]
     fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
     return np.array(fp, dtype=np.float32)
 
 
+@functools.lru_cache(maxsize=32768)
+def _compute_all_features_cached(smiles: str) -> np.ndarray | None:
+    mol = Chem.MolFromSmiles(smiles, sanitize=True)
+    if mol is None or mol.GetNumAtoms() == 0:
+        return None
+    desc = _descriptors_from_mol(mol)
+    fp = _fingerprint_from_mol(mol)
+    return np.concatenate([np.array(list(desc.values()), dtype=np.float32), fp])
+
+
+@functools.lru_cache(maxsize=1)
+def get_descriptor_names() -> list[str]:
+    mol = Chem.MolFromSmiles("CCO", sanitize=True)
+    if mol is None:
+        return []
+    return list(_descriptors_from_mol(mol).keys())
+
+
+def compute_rdkit_descriptors(smiles: str) -> dict | None:
+    feat = _compute_all_features_cached(smiles)
+    if feat is None:
+        return None
+    names = get_descriptor_names()
+    n = len(names)
+    return dict(zip(names, feat[:n].tolist(), strict=False))
+
+
 def get_morgan_fingerprint(smiles: str) -> np.ndarray | None:
-    if not smiles or not smiles.strip():
+    feat = _compute_all_features_cached(smiles)
+    if feat is None:
         return None
-    canon = canonicalize_smiles(smiles)
-    if canon is None:
-        return None
-    result = _morgan_fingerprint_cached(canon)
+    n = len(get_descriptor_names())
+    return feat[n:].copy()
+
+
+def compute_all_features(smiles: str) -> np.ndarray | None:
+    result = _compute_all_features_cached(smiles)
     if result is None:
         return None
     return result.copy()
 
 
-def compute_all_features(smiles: str) -> np.ndarray | None:
-    desc = compute_rdkit_descriptors(smiles)
-    fp = get_morgan_fingerprint(smiles)
-    if desc is None or fp is None:
-        return None
-    desc_array = np.array(list(desc.values()), dtype=np.float32)
-    return np.concatenate([desc_array, fp])
-
-
-def get_descriptor_names() -> list[str]:
-    result = compute_rdkit_descriptors("CCO")
-    if result is None:
-        return []
-    return list(result.keys())
-
-
-FEATURE_NAMES: list[str] | None = None
-
-
+@functools.lru_cache(maxsize=1)
 def get_feature_names() -> list[str]:
-    global FEATURE_NAMES
-    if FEATURE_NAMES is not None:
-        return FEATURE_NAMES
     desc_names = get_descriptor_names()
     fp_names = [f"FP_{i}" for i in range(FINGERPRINT_PARAMS["n_bits"])]
-    FEATURE_NAMES = desc_names + fp_names
-    return FEATURE_NAMES
+    return desc_names + fp_names
 
 
 def feature_dimension() -> int:

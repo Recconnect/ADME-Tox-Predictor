@@ -1,7 +1,11 @@
-import streamlit as st
-import pandas as pd
+import io
 import sys
 from pathlib import Path
+
+import streamlit as st
+import pandas as pd
+from rdkit import Chem
+from rdkit.Chem import Draw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -17,11 +21,15 @@ from src.pdf_report import generate_pdf
 
 def draw_molecule(smiles: str) -> str | None:
     try:
-        from rdkit import Chem
-        from rdkit.Chem import Draw
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return None
+        img = Draw.MolToImage(mol, size=(300, 200))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception:
+        return None
         img = Draw.MolToImage(mol, size=(300, 200))
         import io
         buf = io.BytesIO()

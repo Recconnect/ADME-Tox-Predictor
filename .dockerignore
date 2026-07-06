@@ -1,0 +1,14 @@
+venv/
+.git/
+__pycache__/
+*.pyc
+data/*.tab
+data/*.csv
+data/*.zip
+team_output/
+logs/
+*.db
+users.json
+promo/
+*.md
+LICENSE

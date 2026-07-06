@@ -38,3 +38,10 @@ Thumbs.db
 
 # Generated charts
 promo/charts/
+
+# Runtime state
+usage.db
+users.json
+
+# Python
+*.pyc
