@@ -1,29 +1,29 @@
 # Deploy ADMETox.AI
 
-## Option A: Docker Compose (рекомендовано)
+## Option A: Docker Compose (recommended)
 
-### Требования
+### Requirements
 
 - Docker Engine 24+
 - Docker Compose v2
 - 2+ GB RAM
-- Домен (для HTTPS)
+- Domain (for HTTPS)
 
-### Быстрый старт
+### Quick Start
 
 ```bash
-git clone https://github.com/bradist/ADME-Tox-Predictor.git
+git clone https://github.com/Recconnect/ADME-Tox-Predictor.git
 cd ADME-Tox-Predictor
 
-# 1. Настроить .env
+# 1. Setup .env
 cp .env.example .env
-#   - Сгенерировать ADMETOX_JWT_SECRET: openssl rand -hex 32
-#   - Указать DOMAIN и SSL_EMAIL для HTTPS
+#   - Generate ADMETOX_JWT_SECRET: openssl rand -hex 32
+#   - Set DOMAIN and SSL_EMAIL for HTTPS
 
-# 2. Запустить
+# 2. Build and run
 docker compose up -d --build
 
-# 3. Проверить
+# 3. Verify
 curl http://localhost/api/health
 curl -X POST http://localhost/api/predict \
   -H "Content-Type: application/json" \
@@ -33,24 +33,24 @@ curl -X POST http://localhost/api/predict \
 ### HTTPS (Let's Encrypt)
 
 ```bash
-# Получить сертификаты
+# Get certificates (one-time)
 docker compose --profile setup run certbot
 
-# Перезапустить nginx
+# Restart nginx to apply certificates
 docker compose restart nginx
 
-# Настроить автообновление (crontab -e):
+# Setup auto-renewal (crontab -e):
 #   0 3 1 */2 * cd /opt/admetox && docker compose run --rm certbot renew && docker compose restart nginx
 ```
 
-### Обновление
+### Update
 
 ```bash
 git pull
 docker compose up -d --build
 ```
 
-### Логи
+### Logs
 
 ```bash
 docker compose logs -f api
@@ -60,7 +60,7 @@ docker compose logs -f nginx
 
 ---
 
-## Option B: Native Ubuntu (без Docker)
+## Option B: Native Ubuntu (without Docker)
 
 ### 1. Requirements
 
@@ -70,14 +70,14 @@ docker compose logs -f nginx
 - Let's Encrypt / certbot
 - 2+ GB RAM
 
-### 2. Установка
+### 2. Installation
 
 ```bash
 adduser admetox
 usermod -aG sudo admetox
 su - admetox
 
-git clone https://github.com/bradist/ADME-Tox-Predictor.git /opt/admetox
+git clone https://github.com/Recconnect/ADME-Tox-Predictor.git /opt/admetox
 cd /opt/admetox
 
 python3 -m venv venv
@@ -100,7 +100,7 @@ sudo systemctl start admetox-api admetox-ui
 ### 4. Nginx + SSL
 
 ```bash
-# Адаптировать server_name в deploy/nginx.conf под свой домен
+# Adapt server_name in deploy/nginx.conf to your domain
 sudo cp deploy/nginx.conf /etc/nginx/sites-available/admetox
 sudo ln -s /etc/nginx/sites-available/admetox /etc/nginx/sites-enabled/
 sudo nginx -t && sudo nginx -s reload
@@ -109,7 +109,7 @@ sudo nginx -t && sudo nginx -s reload
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
-### 5. Обновление
+### 5. Update
 
 ```bash
 cd /opt/admetox
@@ -118,20 +118,20 @@ make deploy
 
 ---
 
-## Структура портов (Docker)
+## Port Structure (Docker)
 
-| Сервис | Внутренний порт | Внешний порт | URL |
-|--------|----------------|--------------|-----|
+| Service | Internal Port | External Port | URL |
+|---------|---------------|---------------|-----|
 | nginx | 80/443 | 80/443 | `http://localhost/` |
-| FastAPI API | 8000 | — | `/api/` через nginx |
-| Streamlit UI | 8501 | — | `/ui/` через nginx |
+| FastAPI API | 8000 | — | `/api/` via nginx |
+| Streamlit UI | 8501 | — | `/ui/` via nginx |
 
-## Переменные окружения
+## Environment Variables
 
-| Переменная | По умолчанию | Обязательная | Описание |
-|------------|-------------|-------------|----------|
-| `ADMETOX_JWT_SECRET` | — | ✅ | Секрет для JWT (сгенерировать `openssl rand -hex 32`) |
-| `ADMETOX_API_KEYS` | — | ❌ | API-ключи через запятую |
-| `ADMETOX_CORS_ORIGINS` | `https://admetox.ai` | ❌ | Разрешённые CORS-источники |
-| `DOMAIN` | — | для SSL | Домен для Let's Encrypt |
-| `SSL_EMAIL` | — | для SSL | Email для Let's Encrypt |
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `ADMETOX_JWT_SECRET` | — | ✅ | JWT secret (generate with `openssl rand -hex 32`) |
+| `ADMETOX_API_KEYS` | — | ❌ | Comma-separated API keys |
+| `ADMETOX_CORS_ORIGINS` | `https://admetox.ai` | ❌ | Allowed CORS origins |
+| `DOMAIN` | — | for SSL | Domain for Let's Encrypt |
+| `SSL_EMAIL` | — | for SSL | Email for Let's Encrypt |

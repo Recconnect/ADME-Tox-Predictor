@@ -5,6 +5,11 @@
 - Ветка: `master`
 - GitHub: https://github.com/Recconnect/ADME-Tox-Predictor
 - Последние коммиты:
+  - `8ab3a3d` — fix: resolve Streamlit session_state error for drug selection buttons
+  - `ed56b3a` — refactor: move agents/ to separate client_engagement/ project
+  - `6cdb5ca` — docs: update AGENTS.md with all 7 agents and new coordinator commands
+  - `498c2a9` — feat: add 3 new outreach agents (feedback, conference, social media)
+  - `99c63af` — feat: add outreach agents module for automated product promotion
   - `f93e500` — docker: production-ready compose with nginx + certbot + embedded models
   - `eaee7f4` — security: fix 14 issues from pre-deployment audit
 

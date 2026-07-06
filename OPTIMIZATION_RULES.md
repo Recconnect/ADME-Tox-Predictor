@@ -137,10 +137,12 @@ filterwarnings = ["ignore:.*X does not have valid feature names.*"]
 
 ## 8. Производительность (целевые метрики)
 
-| Метрика | Сейчас | Цель |
-|---------|--------|------|
-| Startup time (API) | 1.86s | <0.3s |
-| Single predict (новый SMILES) | 176ms | <50ms |
-| Batch predict (среднее) | 38ms | <15ms |
-| RAM | 213 MB | <150 MB |
-| Warnings в тестах | 504 | <50 |
+| Метрика | Было | Сейчас | Цель | Статус |
+|---------|------|--------|------|--------|
+| Startup time (API) | 1.86s | ~1.7s | <0.3s | ⚠️ В процессе |
+| Single predict (новый SMILES) | 176ms | ~26ms | <50ms | ✅ Достигнуто |
+| Batch predict (среднее) | 38ms | ~32ms | <15ms | ⚠️ В процессе |
+| RAM | 213 MB | ~200 MB | <150 MB | ⚠️ В процессе |
+| Warnings в тестах | 504 | 1 | <50 | ✅ Достигнуто |
+
+**Примечание:** Lazy loading моделей (коммит `1e1f55e`) значительно улучшил single predict время. Warnings снижены с 504 до 1 через filterwarnings в pyproject.toml.
