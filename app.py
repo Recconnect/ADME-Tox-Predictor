@@ -9,25 +9,27 @@ from src.predict import ADMETPredictor
 from src.features import compute_rdkit_descriptors
 from src.feature_importance import get_model_feature_importance
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
+from src.i18n import t, translate_class, translate_prop_name, translate_model_name, get_lang, sidebar_lang_selector
 
 
 def check_lipinski_rule_of_five(desc: dict | None) -> dict:
     if desc is None:
         return {"passed": False, "violations": [], "detail": "No descriptors"}
+    lang = get_lang()
     violations = []
     if desc.get("MolWt", 0) > 500:
-        violations.append(f"MolWt={desc['MolWt']:.0f} > 500")
+        violations.append(t("lipinski_molwt", lang, v=desc["MolWt"]))
     if desc.get("LogP", 0) > 5:
-        violations.append(f"LogP={desc['LogP']:.2f} > 5")
+        violations.append(t("lipinski_logp", lang, v=desc["LogP"]))
     if desc.get("NumHDonors", 0) > 5:
-        violations.append(f"HDonors={desc['NumHDonors']} > 5")
+        violations.append(t("lipinski_hdonors", lang, v=desc["NumHDonors"]))
     if desc.get("NumHAcceptors", 0) > 10:
-        violations.append(f"HAcceptors={desc['NumHAcceptors']} > 10")
-    return {
-        "passed": len(violations) == 0,
-        "violations": violations,
-        "detail": f"{len(violations)} violation(s): " + "; ".join(violations) if violations else "Passes Lipinski Rule of Five",
-    }
+        violations.append(t("lipinski_hacceptors", lang, v=desc["NumHAcceptors"]))
+    if violations:
+        detail = t("lipinski_violations", lang, n=len(violations), details="; ".join(violations))
+    else:
+        detail = t("lipinski_passes", lang)
+    return {"passed": len(violations) == 0, "violations": violations, "detail": detail}
 
 
 def color_class(val: str) -> str:
@@ -40,51 +42,54 @@ def color_class(val: str) -> str:
     return "#ffc107"
 
 
+lang = get_lang()
+
 st.set_page_config(
-    page_title="ADMETox.AI",
-    page_icon="🧬",
+    page_title=t("app_title", lang),
+    page_icon="\U0001f9ec",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("ADME/Tox Predictor")
-st.markdown("AI-powered ADME/Tox screening for drug discovery. [ADMETox.AI](https://admetox.ai)")
+st.title(t("app_title", lang))
+st.markdown(t("app_subtitle", lang))
+
 
 @st.cache_resource
 def get_predictor():
     predictor = ADMETPredictor()
     if not predictor.is_ready:
-        st.error(
-            "Models not found. Train first via: python run_train.py"
-        )
+        st.error(t("errors_models_not_found", lang))
     return predictor
+
 
 predictor = get_predictor()
 
 if not predictor.is_ready:
     st.stop()
 
-tab1, tab2, tab3, tab4 = st.tabs(["Single Prediction", "Batch Prediction", "Validation", "Feature Importance"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    t("tab_single", lang), t("tab_batch", lang),
+    t("tab_validation", lang), t("tab_features", lang),
+])
 
 with tab1:
-    st.header("Single Molecule Prediction")
-
+    st.header(t("single_header", lang))
     smiles = st.text_input(
-        "Enter SMILES",
-        placeholder="CCO",
+        t("single_input_label", lang),
+        placeholder=t("single_placeholder", lang),
         key="single_smiles",
-        help="Enter a valid SMILES string (e.g., CCO for ethanol)",
+        help=t("single_help", lang),
     )
 
-    if st.button("Predict", type="primary") and smiles:
-        with st.spinner("Computing properties..."):
+    if st.button(t("single_button", lang), type="primary") and smiles:
+        with st.spinner(t("single_spinner", lang)):
             result = predictor.predict_single(smiles)
 
         if "error" in result:
             st.error(result["error"])
         else:
-            st.success("Prediction complete!")
-
+            st.success(t("single_success", lang))
             prop_cols = st.columns(3)
             col_idx = 0
             prop_keys = [
@@ -101,14 +106,15 @@ with tab1:
                         display = f"{val:.3f}" if isinstance(val, float) else str(val)
                         if "Class" in key:
                             bg = color_class(str(val))
+                            label = translate_prop_name(key, lang) if "Class" in key else key
                             st.markdown(
                                 f'<div style="padding:12px;border-radius:8px;background:{bg}20;'
                                 f'border-left:4px solid {bg}">'
-                                f'<small>{key}</small><br><strong>{display}</strong></div>',
+                                f'<small>{label}</small><br><strong>{display}</strong></div>',
                                 unsafe_allow_html=True,
                             )
                         else:
-                            st.metric(key, display)
+                            st.metric(translate_prop_name(key, lang), display)
                     col_idx += 1
 
             lipinski = check_lipinski_rule_of_five(
@@ -116,91 +122,93 @@ with tab1:
                     "MolWt", "LogP", "NumHDonors", "NumHAcceptors",
                 }}
             )
+            msg = t("lipinski_info", lang, detail=lipinski["detail"])
             if not lipinski["passed"]:
-                st.warning(f"Lipinski Rule of Five: {lipinski['detail']}")
+                st.warning(msg)
             else:
-                st.info(f"Lipinski Rule of Five: {lipinski['detail']}")
+                st.info(msg)
 
-            with st.expander("View all RDKit descriptors"):
-                desc_keys = [
-                    k for k in result.keys()
-                    if k not in prop_keys + ["error", "SMILES"]
-                ]
+            with st.expander(t("single_expander", lang)):
+                prop_keys_set = set([
+                    "Solubility (logS)", "SolubilityClass",
+                    "Caco-2 Permeability", "Caco-2 Class",
+                    "hERG Toxicity Risk", "hERG Class",
+                    "Lipophilicity (logD)", "P-gp Inhibition", "P-gp Class",
+                ])
+                desc_keys = [k for k in result.keys() if k not in prop_keys_set | {"error", "SMILES"}]
                 desc_data = {k: result[k] for k in desc_keys if k in result}
                 if desc_data:
                     desc_df = pd.DataFrame([desc_data]).T.reset_index()
-                    desc_df.columns = ["Descriptor", "Value"]
+                    desc_df.columns = [t("desc_col_name", lang), t("desc_col_value", lang)]
                     st.dataframe(desc_df, width="stretch")
 
 with tab2:
-    st.header("Batch Prediction")
-
+    st.header(t("batch_header", lang))
     input_method = st.radio(
-        "Input method:", ["Manual input", "Upload CSV"], horizontal=True
+        t("batch_radio_label", lang),
+        [t("batch_radio_manual", lang), t("batch_radio_csv", lang)],
+        horizontal=True,
     )
 
-    if input_method == "Manual input":
+    if input_method == t("batch_radio_manual", lang):
         batch_smiles = st.text_area(
             "SMILES (one per line)",
-            placeholder="CCO\nCC(=O)Oc1ccccc1C(=O)O\nCC(C)Cc1ccc(C(C)C(=O)O)cc1",
+            placeholder=t("batch_textarea_placeholder", lang),
             height=200,
         )
-
-        if st.button("Predict Batch", type="primary") and batch_smiles:
+        if st.button(t("batch_button", lang), type="primary") and batch_smiles:
             smiles_list = [s.strip() for s in batch_smiles.split("\n") if s.strip()]
-            with st.spinner(f"Predicting {len(smiles_list)} molecules..."):
+            with st.spinner(t("batch_spinner", lang, n=len(smiles_list))):
                 results = predictor.predict_batch(smiles_list)
             df = pd.DataFrame(results)
             df.insert(0, "SMILES", smiles_list[:len(df)])
             for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df.columns:
                     df[col] = df[col].apply(
-                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                        lambda v, c=col: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                        f'{translate_class(str(v), lang)}</span>'
                     )
+                    df = df.rename(columns={col: translate_prop_name(col, lang)})
             st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
-                "Download CSV", df.to_csv(index=False).encode("utf-8"),
+                t("batch_download", lang), df.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
             )
-
     else:
         uploaded_file = st.file_uploader(
-            "Upload CSV with a 'SMILES' column",
-            type=["csv"],
+            t("batch_uploader", lang), type=["csv"],
         )
         if uploaded_file is not None:
             if uploaded_file.size > MAX_UPLOAD_MB * 1024 * 1024:
-                st.error(f"File too large. Max {MAX_UPLOAD_MB} MB.")
+                st.error(t("batch_error_size", lang, n=MAX_UPLOAD_MB))
                 st.stop()
-
             df_input = pd.read_csv(uploaded_file)
             if "SMILES" not in df_input.columns:
-                st.error("CSV must contain a 'SMILES' column")
+                st.error(t("batch_error_column", lang))
                 st.stop()
-
             smiles_list = df_input["SMILES"].dropna().astype(str).str.strip().tolist()
-            with st.spinner(f"Predicting {len(smiles_list)} molecules..."):
+            with st.spinner(t("batch_spinner", lang, n=len(smiles_list))):
                 results = predictor.predict_batch(smiles_list)
             df_output = pd.DataFrame(results)
             df_output.insert(0, "SMILES", smiles_list[:len(df_output)])
             for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df_output.columns:
                     df_output[col] = df_output[col].apply(
-                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                        f'{translate_class(str(v), lang)}</span>'
                     )
+                    df_output = df_output.rename(columns={col: translate_prop_name(col, lang)})
             st.markdown(df_output.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
-                "Download CSV", df_output.to_csv(index=False).encode("utf-8"),
+                t("batch_download", lang), df_output.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
             )
 
 with tab3:
-    st.header("Validation on Known Drugs")
-
-    if st.button("Run Validation", type="primary"):
-        with st.spinner(f"Validating on {len(VALIDATION_DRUGS)} known drugs..."):
+    st.header(t("val_header", lang))
+    if st.button(t("val_button", lang), type="primary"):
+        with st.spinner(t("val_spinner", lang, n=len(VALIDATION_DRUGS))):
             df_val = predictor.predict_validated(VALIDATION_DRUGS)
-
         if not df_val.empty:
             display_cols = [
                 "Drug", "Solubility (logS)", "SolubilityClass",
@@ -214,10 +222,13 @@ with tab3:
             for col in ["SolubilityClass", "Caco-2 Class", "hERG Class", "P-gp Class"]:
                 if col in df_display.columns:
                     df_display[col] = df_display[col].apply(
-                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">'
+                        f'{translate_class(str(v), lang)}</span>'
                     )
+                    df_display = df_display.rename(columns={col: translate_prop_name(col, lang)})
+            rename_map = {k: translate_prop_name(k, lang) for k in df_display.columns if k != "Drug"}
+            df_display = df_display.rename(columns=rename_map)
             st.markdown(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-
             summary = {}
             if "Solubility (logS)" in df_val.columns:
                 summary["Avg LogS"] = round(df_val["Solubility (logS)"].mean(), 3)
@@ -233,57 +244,47 @@ with tab3:
                 inhib = (df_val["P-gp Class"] == "Inhibitor (high risk)").sum()
                 summary["P-gp Inhibitors"] = f"{inhib}/{len(df_val)}"
             st.json(summary)
-
             st.download_button(
-                "Download Validation CSV",
+                t("val_download", lang),
                 df_val.to_csv(index=False).encode("utf-8"),
                 "validation_results.csv", "text/csv",
             )
 
 with tab4:
-    st.header("Feature Importance")
-    st.markdown("Top-10 RDKit descriptors driving each model's predictions:")
-
-    model_names = {
-        "solubility": "Solubility (logS)",
-        "caco2": "Caco-2 Permeability",
-        "herg": "hERG Toxicity",
-        "lipophilicity": "Lipophilicity (logD)",
-        "pgp": "P-gp Inhibition",
-    }
-
-    for key, label in model_names.items():
+    st.header(t("fi_header", lang))
+    st.markdown(t("fi_subtitle", lang))
+    for key in ["solubility", "caco2", "herg", "lipophilicity", "pgp"]:
         imp = get_model_feature_importance(key)
         if imp is None:
-            st.warning(f"Feature importance not available for {label}")
+            st.warning(t("fi_not_available", lang, label=translate_model_name(key, lang)))
             continue
-        with st.expander(f"{label} — Top 10 Descriptors", expanded=False):
+        with st.expander(
+            t("fi_expander", lang, label=translate_model_name(key, lang)),
+            expanded=False,
+        ):
             df = pd.DataFrame(imp["descriptor_importance"])
-            df.columns = ["Descriptor", "Importance"]
+            df.columns = [t("fi_col_name", lang), t("fi_col_importance", lang)]
             st.dataframe(df, hide_index=True, use_container_width=True)
-            st.caption(f"Fingerprint total importance: {imp['fingerprint_total_importance']:.2f}")
+            st.caption(t("fi_caption", lang, value=f"{imp['fingerprint_total_importance']:.2f}"))
 
 with st.sidebar:
-    st.header("About ADMETox.AI")
-    st.markdown("""
-**AI-powered ADME/Tox screening**
+    sidebar_lang_selector()
+    st.header(t("sidebar_about", lang))
+    metrics_table = f"""
+**{t('sidebar_about', lang)}**
 
-| Property | Metric |
+| {t('sidebar_property', lang)} | {t('sidebar_metric', lang)} |
 |---|---|
-| Solubility | R² = **0.806** |
-| Caco-2 | AUC = **0.932** |
-| hERG | AUC = **0.914** |
-| Lipophilicity | R² = **trained** |
-| P-gp | Acc = **trained** |
+| {translate_model_name('solubility', lang)} | R² = **0.806** |
+| {translate_model_name('caco2', lang)} | AUC = **0.932** |
+| {translate_model_name('herg', lang)} | AUC = **0.846** |
+| {translate_model_name('lipophilicity', lang)} | R² = **0.651** |
+| {translate_model_name('pgp', lang)} | AUC = **0.964** |
 
-Built with LightGBM + RDKit
-""")
-    st.header("Lipinski Rule of Five")
-    st.markdown("""
-- MolWt < 500
-- LogP < 5
-- H-Donors < 5
-- H-Acceptors < 10
-""")
-    st.header("Example SMILES")
-    st.code("Ethanol: CCO\nAspirin: CC(=O)Oc1ccccc1C(=O)O\nCaffeine: CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
+{t('sidebar_built_with', lang)}
+"""
+    st.markdown(metrics_table)
+    st.header(t("sidebar_lipinski", lang))
+    st.markdown(t("sidebar_lipinski_rules", lang))
+    st.header(t("sidebar_examples", lang))
+    st.code(t("sidebar_examples_code", lang))
