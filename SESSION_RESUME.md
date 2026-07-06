@@ -23,12 +23,14 @@ python -m team.runner --strategy       # аудит + GTM план
 ## Git история
 
 ```
+8509602 Add landing page (Russian), Dockerfile + docker-compose, Lipinski Rule-of-Five, color-coded results
+2f02588 Update SESSION_RESUME.md — latest state with team agents, GTM plan, Week 1
 0ca3b69 Add Week 1 deliverables: ChemRar cold pitch + Start-1 grant application
 21dc7ab Add Strategist agent: consolidated GTM plan for Russia
 c3f3aa1 Add local team agents: 6-role audit pipeline
-314995a Add SESSION_RESUME.md — full project summary
+314995a Add SESSION_RESUME.md
 d44132c Add investor_kit: strategy analysis, competitive positioning, metrics dashboard
-495b665 v2.0: major refactor - tests, SMILES canonicalization, logging, security
+495b665 v2.0: major refactor — tests, SMILES canonicalization, logging, security
 ```
 
 ---
@@ -58,6 +60,11 @@ adme_proto/
 ├── data/                        # .tab датасеты (авто-скачивание)
 ├── models/                      # .pkl + training_results.json
 ├── logs/                        # app.log
+│
+├── landing/                     # Лендинг на русском (GitHub Pages)
+│   └── index.html               # admetox.ai — продукт, метрики, цены
+├── Dockerfile                   # Контейнеризация
+├── docker-compose.yml           # docker compose up
 │
 ├── team/                        ##=== КОМАНДА АГЕНТОВ ===##
 │   ├── base.py                  # BaseAgent: чтение артефактов, генерация отчётов
