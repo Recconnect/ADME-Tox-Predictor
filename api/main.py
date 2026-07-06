@@ -98,7 +98,7 @@ app = FastAPI(
 
 _cors_origins = os.environ.get(
     "ADMETOX_CORS_ORIGINS",
-    "https://admetox.ai,https://www.admetox.ai,https://bradist.github.io",
+    "https://admetox.ai,https://www.admetox.ai",
 )
 app.add_middleware(
     CORSMiddleware,

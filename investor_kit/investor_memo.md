@@ -37,4 +37,4 @@ M&A в Big Pharma или CRO (Schrodinger, Charles River, Benchling)
 
 ---
 
-**Контакты:** D:\AI\biotech\adme_proto | MVP готов | Пилоты открыты
+**Контакты:** `./` | MVP готов | Пилоты открыты

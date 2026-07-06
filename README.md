@@ -177,7 +177,7 @@ python -m pytest tests/test_predict.py -v
 
 Automated outreach system for product promotion and investor relations:
 
-**Location:** `D:\AI\biotech\client_engagement\`
+**Location:** `./client_engagement/`
 
 **7 specialized agents:**
 1. GitHub Agent — auto-release, changelog, issue responses

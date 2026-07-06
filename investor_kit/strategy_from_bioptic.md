@@ -2,7 +2,7 @@
 
 ## Источник
 Интервью с Андреем Дороничевым (сооснователь BIOPTIC, экс-Google 14 лет,
-YouTube mobile, Android). Полный текст: `D:\AI\biotech\business_model.txt`
+YouTube mobile, Android). Полный текст: `./business_model.txt`
 
 ---
 

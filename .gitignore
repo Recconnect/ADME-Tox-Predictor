@@ -48,3 +48,18 @@ users.json
 
 # Streamlit (keep config.toml, ignore cache)
 .streamlit/secrets.toml
+
+# Internal session docs — not part of the application
+AGENTS.md
+SESSION_RESUME.md
+team_output/
+
+# Local opencode configuration
+.opencode/
+
+# Marketing/promo materials (presentations, articles)
+promo/*.pptx
+promo/*.pdf
+
+# Business & strategy documents
+investor_kit/*.md

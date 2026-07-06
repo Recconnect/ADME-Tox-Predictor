@@ -26,7 +26,7 @@ jobs:
         run: |
           python -c "
           import requests, zipfile, io, os
-          url = 'https://github.com/bradist/ADME-Tox-Predictor/releases/download/v2.0/models.zip'
+          url = 'https://github.com/${{ github.repository }}/releases/download/v2.0/models.zip'
           r = requests.get(url)
           z = zipfile.ZipFile(io.BytesIO(r.content))
           z.extractall('models/')

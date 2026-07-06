@@ -168,14 +168,7 @@ token = "ghp_abc123..."
 ```
 
 ### 9.2. Структура секретов
-**Правило:** Секреты хранятся в `D:\AI\biotech\secrets\` (не коммитится в git).
-
-```
-D:\AI\biotech\secrets\
-├── git_tkn.txt          # GitHub Personal Access Token
-├── openai_key.txt       # OpenAI API Key
-└── email_creds.txt      # Email credentials (user:password)
-```
+**Правило:** Секреты хранятся в `./secrets/` (не коммитится в git).
 
 ### 9.3. .env файлы
 **Правило:** `.env` файлы добавлены в `.gitignore` и никогда не коммитятся.
