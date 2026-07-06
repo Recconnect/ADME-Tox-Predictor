@@ -146,3 +146,70 @@ filterwarnings = ["ignore:.*X does not have valid feature names.*"]
 | Warnings в тестах | 504 | 1 | <50 | ✅ Достигнуто |
 
 **Примечание:** Lazy loading моделей (коммит `1e1f55e`) значительно улучшил single predict время. Warnings снижены с 504 до 1 через filterwarnings в pyproject.toml.
+
+## 9. Безопасность
+
+### 9.1. Хранение секретов
+**Правило:** Никогда не хранить секреты (токены, пароли, API ключи) в коде или конфигурационных файлах.
+
+**Правильно:**
+```python
+# ✅ Использовать переменные окружения
+import os
+token = os.getenv("GITHUB_TOKEN")
+if not token:
+    raise ValueError("GITHUB_TOKEN not set in .env")
+```
+
+**Неправильно:**
+```python
+# ❌ Хардкод секретов
+token = "ghp_abc123..."
+```
+
+### 9.2. Структура секретов
+**Правило:** Секреты хранятся в `D:\AI\biotech\secrets\` (не коммитится в git).
+
+```
+D:\AI\biotech\secrets\
+├── git_tkn.txt          # GitHub Personal Access Token
+├── openai_key.txt       # OpenAI API Key
+└── email_creds.txt      # Email credentials (user:password)
+```
+
+### 9.3. .env файлы
+**Правило:** `.env` файлы добавлены в `.gitignore` и никогда не коммитятся.
+
+**Шаблон:** `.env.example` содержит placeholder'ы, но не реальные секреты.
+
+```env
+# .env.example
+GITHUB_TOKEN=your_github_token_here
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### 9.4. Проверка перед коммитом
+**Правило:** Перед каждым коммитом проверять:
+- Нет ли секретов в staged файлах: `git diff --cached | grep -i "token\|password\|secret"`
+- Нет ли `.env` файлов: `git status | grep "\.env"`
+- Нет ли файлов из `secrets/`: `git status | grep "secrets/"`
+
+### 9.5. Ротация секретов
+**Правило:** Регулярно ротировать секреты (каждые 90 дней):
+1. Отозвать старый токен через GitHub/провайдер
+2. Сгенерировать новый
+3. Обновить `.env` и `secrets/`
+4. Удалить старые секреты
+
+### 9.6. Чувствительная информация в git history
+**Правило:** Если секрет попал в git history — немедленно:
+1. Отозвать токен/пароль
+2. Переписать git history через `git filter-repo`
+3. Force push (если репозиторий публичный)
+4. Уведомить команду
+
+### 9.7. Минимальные права
+**Правило:** Создавать токены с минимально необходимыми правами:
+- GitHub: только `repo` scope (не `admin`, не `delete`)
+- Email: app-specific password (не основной пароль)
+- API ключи: только необходимые endpoints
