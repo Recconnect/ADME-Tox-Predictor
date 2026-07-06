@@ -22,7 +22,7 @@ def teardown_function():
 
 
 def test_register():
-    resp = client.post("/register", json={"username": "testuser", "password": "test123"})
+    resp = client.post("/register", json={"username": "testuser", "password": "test1234"})
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
@@ -32,8 +32,8 @@ def test_register():
 
 
 def test_register_duplicate():
-    register_user("dup", "test123")
-    resp = client.post("/register", json={"username": "dup", "password": "test456"})
+    register_user("dup", "test1234")
+    resp = client.post("/register", json={"username": "dup", "password": "test5678"})
     assert resp.status_code == 400
     assert "already exists" in resp.json()["detail"]
 
@@ -44,8 +44,8 @@ def test_register_short_password():
 
 
 def test_login():
-    register_user("loginuser", "pass123")
-    resp = client.post("/login", json={"username": "loginuser", "password": "pass123"})
+    register_user("loginuser", "pass1234")
+    resp = client.post("/login", json={"username": "loginuser", "password": "pass1234"})
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
@@ -59,8 +59,8 @@ def test_login_wrong_password():
 
 
 def test_jwt_can_access_predict():
-    register_user("apiuser", "pass123")
-    token = authenticate_user("apiuser", "pass123")
+    register_user("apiuser", "pass1234")
+    token = authenticate_user("apiuser", "pass1234")
     resp = client.post(
         "/predict",
         json={"smiles": "CCO"},

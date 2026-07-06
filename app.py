@@ -1,4 +1,5 @@
 import io
+import html
 import sys
 from pathlib import Path
 
@@ -407,7 +408,10 @@ with tab2:
                         f'{translate_class(str(v), lang)}</span>'
                     )
                     df = df.rename(columns={col: translate_prop_name(col, lang)})
-            st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+            df_to_show = df.copy()
+            if "SMILES" in df_to_show.columns:
+                df_to_show["SMILES"] = df_to_show["SMILES"].apply(html.escape)
+            st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 t("batch_download", lang), df.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
@@ -420,11 +424,30 @@ with tab2:
             if uploaded_file.size > MAX_UPLOAD_MB * 1024 * 1024:
                 st.error(t("batch_error_size", lang, n=MAX_UPLOAD_MB))
                 st.stop()
+            raw_bytes = uploaded_file.read()
+            try:
+                raw_text = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                st.error("File must be UTF-8 encoded.")
+                st.stop()
+            if "\x00" in raw_text:
+                st.error("File contains invalid null bytes.")
+                st.stop()
+            if len(raw_bytes) > MAX_UPLOAD_MB * 1024 * 1024:
+                st.error(t("batch_error_size", lang, n=MAX_UPLOAD_MB))
+                st.stop()
+            uploaded_file.seek(0)
             df_input = pd.read_csv(uploaded_file)
+            if df_input.shape[1] > 100:
+                st.error("CSV has too many columns (max 100).")
+                st.stop()
             if "SMILES" not in df_input.columns:
                 st.error(t("batch_error_column", lang))
                 st.stop()
             smiles_list = df_input["SMILES"].dropna().astype(str).str.strip().tolist()
+            if len(smiles_list) > 10000:
+                st.error("Too many rows (max 10000).")
+                st.stop()
             with st.spinner(t("batch_spinner", lang, n=len(smiles_list))):
                 results = predictor.predict_batch(smiles_list)
             df_output = pd.DataFrame(results)
@@ -436,7 +459,10 @@ with tab2:
                         f'{translate_class(str(v), lang)}</span>'
                     )
                     df_output = df_output.rename(columns={col: translate_prop_name(col, lang)})
-            st.markdown(df_output.to_html(escape=False, index=False), unsafe_allow_html=True)
+            df_to_show = df_output.copy()
+            if "SMILES" in df_to_show.columns:
+                df_to_show["SMILES"] = df_to_show["SMILES"].apply(html.escape)
+            st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 t("batch_download", lang), df_output.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
@@ -467,22 +493,28 @@ with tab3:
                     df_display = df_display.rename(columns={col: translate_prop_name(col, lang)})
             rename_map = {k: translate_prop_name(k, lang) for k in df_display.columns if k != "Drug"}
             df_display = df_display.rename(columns=rename_map)
-            st.markdown(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-            summary = {}
+            df_to_show = df_display.copy()
+            if "Drug" in df_to_show.columns:
+                df_to_show["Drug"] = df_to_show["Drug"].apply(html.escape)
+            st.markdown(df_to_show.to_html(escape=False, index=False), unsafe_allow_html=True)
+            st.subheader("Summary" if lang == "en" else "Сводка")
+            sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+            n_drugs = len(df_val)
             if "Solubility (logS)" in df_val.columns:
-                summary["Avg Water Solubility"] = round(df_val["Solubility (logS)"].mean(), 3)
+                avg = round(df_val["Solubility (logS)"].mean(), 3)
+                sc1.metric("Avg Water Solubility" if lang == "en" else "Ср. растворимость", avg)
             if "Caco-2 Class" in df_val.columns:
                 high = (df_val["Caco-2 Class"] == "High permeability").sum()
-                summary["High Gut Absorption"] = f"{high}/{len(df_val)}"
+                sc2.metric("High Gut Absorption" if lang == "en" else "Высокое всасывание", f"{high}/{n_drugs}")
             if "hERG Class" in df_val.columns:
                 toxic = (df_val["hERG Class"] == "Toxic (high risk)").sum()
-                summary["Cardiotoxicity Risk"] = f"{toxic}/{len(df_val)}"
+                sc3.metric("Cardiotoxicity Risk" if lang == "en" else "Риск для сердца", f"{toxic}/{n_drugs}")
             if "Lipophilicity (logD)" in df_val.columns:
-                summary["Avg Fat Solubility"] = round(df_val["Lipophilicity (logD)"].mean(), 3)
+                avg = round(df_val["Lipophilicity (logD)"].mean(), 3)
+                sc4.metric("Avg Fat Solubility" if lang == "en" else "Ср. жирорастворимость", avg)
             if "P-gp Class" in df_val.columns:
                 inhib = (df_val["P-gp Class"] == "Inhibitor (high risk)").sum()
-                summary["Drug Resistance Risk"] = f"{inhib}/{len(df_val)}"
-            st.json(summary)
+                sc5.metric("Drug Resistance Risk" if lang == "en" else "Риск устойчивости", f"{inhib}/{n_drugs}")
             st.download_button(
                 t("val_download", lang),
                 df_val.to_csv(index=False).encode("utf-8"),

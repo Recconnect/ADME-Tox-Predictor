@@ -1,12 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PredictRequest(BaseModel):
-    smiles: str
+    smiles: str = Field(max_length=10000)
 
 
 class BatchPredictRequest(BaseModel):
-    smiles: list[str]
+    smiles: list[str] = Field(max_length=10000, description="List of SMILES strings (max 10000)")
 
 
 class PropertyResult(BaseModel):

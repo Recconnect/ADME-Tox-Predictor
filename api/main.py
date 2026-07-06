@@ -96,11 +96,15 @@ app = FastAPI(
     contact={"name": "ADMETox.AI", "url": "https://admetox.ai"},
 )
 
+_cors_origins = os.environ.get(
+    "ADMETOX_CORS_ORIGINS",
+    "https://admetox.ai,https://www.admetox.ai,https://bradist.github.io",
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.state.limiter = limiter
@@ -258,7 +262,7 @@ def predict_pdf(request: Request, smiles: str, lang: str = "ru", _: None = Depen
 
 
 @app.get("/metrics", tags=["System"])
-def get_metrics():
+def get_metrics(_: None = Depends(verify_api_key)):
     return Response(content=generate_latest(APP_REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -275,7 +279,7 @@ def register(request: Request, req: RegisterRequest):
 
 
 @app.post("/login", response_model=AuthResponse, tags=["Auth"])
-@limiter.limit("20/minute")
+@limiter.limit("5/minute")
 def login(request: Request, req: LoginRequest):
     token = authenticate_user(req.username, req.password)
     if not token:
@@ -284,7 +288,7 @@ def login(request: Request, req: LoginRequest):
 
 
 @app.get("/admin/usage", response_model=UsageStatsResponse, tags=["Admin"])
-def admin_usage(days: int = 7):
+def admin_usage(days: int = 7, _: None = Depends(verify_api_key)):
     stats = get_stats(days)
     return UsageStatsResponse(**stats)
 
@@ -306,7 +310,8 @@ def _do_predict(smiles: str) -> PredictResponse:
 
     canon = canonicalize_smiles(smiles)
     if canon is None:
-        return PredictResponse(smiles=smiles, error=f"Invalid SMILES: {smiles}")
+        safe_smi = smiles[:200] + "..." if len(smiles) > 200 else smiles
+        return PredictResponse(smiles=smiles, error=f"Invalid SMILES: {safe_smi}")
 
     result = predictor.predict_single(smiles)
 
@@ -326,4 +331,5 @@ def _do_predict(smiles: str) -> PredictResponse:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+    _reload = os.environ.get("ADMETOX_DEV_RELOAD", "").lower() in ("1", "true", "yes")
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=_reload)

@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import r2_score, mean_absolute_error, accuracy_score, roc_auc_score
@@ -189,8 +190,51 @@ def save_model(model, model_path, metadata=None):
     return path
 
 
+_CHECKSUMS: dict[str, str] = {}
+
+
+def _load_checksums():
+    checksums_path = Path(__file__).resolve().parents[1] / "models" / "checksums.txt"
+    if not checksums_path.exists():
+        return
+    for line in checksums_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(None, 1)
+        if len(parts) == 2:
+            _CHECKSUMS[parts[1]] = parts[0]
+
+
+def _verify_model_integrity(model_path: Path) -> bool:
+    if not _CHECKSUMS:
+        _load_checksums()
+    if not _CHECKSUMS:
+        logger.warning("No checksums file found. Skipping model integrity check.")
+        return True
+    fname = model_path.name
+    expected = _CHECKSUMS.get(fname)
+    if expected is None:
+        logger.warning("No checksum for %s. Skipping.", fname)
+        return True
+    h = hashlib.sha256()
+    with open(model_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    actual = h.hexdigest()
+    if actual != expected:
+        logger.error("INTEGRITY FAILURE: %s hash mismatch (expected %s, got %s)",
+                      fname, expected[:16], actual[:16])
+        return False
+    logger.info("Model integrity verified: %s", fname)
+    return True
+
+
 def load_model(model_path):
-    data = joblib.load(model_path)
+    path = Path(model_path) if isinstance(model_path, str) else model_path
+    if not _verify_model_integrity(path):
+        raise RuntimeError(f"Model integrity check failed for {path}")
+    data = joblib.load(path)
     if isinstance(data, dict) and "model" in data:
         return data["model"]
     return data

@@ -1,17 +1,38 @@
 import json
 import os
 import time
+import secrets
+import stat
+import logging
 from pathlib import Path
 from dataclasses import dataclass
 
 import jwt
 import bcrypt
 
-JWT_SECRET = os.environ.get("ADMETOX_JWT_SECRET", "admetox-dev-secret-change-in-prod")
+logger = logging.getLogger(__name__)
+
+_JWT_SECRET_ENV = os.environ.get("ADMETOX_JWT_SECRET")
+if _JWT_SECRET_ENV:
+    JWT_SECRET = _JWT_SECRET_ENV
+else:
+    JWT_SECRET = secrets.token_hex(32)
+    logger.warning("ADMETOX_JWT_SECRET not set. Generated random 64-char secret. "
+                   "Set this env var in production for persistent tokens.")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
 _USERS_FILE = Path(__file__).resolve().parents[1] / "users.json"
+
+
+def _set_private_perms(path: Path):
+    try:
+        current = stat.S_IMODE(os.stat(path).st_mode)
+        private = stat.S_IRUSR | stat.S_IWUSR
+        if current & 0o077 != 0:
+            os.chmod(path, private)
+    except OSError:
+        pass
 
 
 @dataclass
@@ -44,14 +65,15 @@ def _save_users(users: dict[str, User]):
     }
     with open(_USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(raw, f, indent=2, ensure_ascii=False)
+    _set_private_perms(_USERS_FILE)
 
 
 def register_user(username: str, password: str) -> str | None:
     users = _load_users()
     if username in users:
         return "Username already exists"
-    if len(password) < 6:
-        return "Password must be at least 6 characters"
+    if len(password) < 8:
+        return "Password must be at least 8 characters"
     pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     users[username] = User(
         username=username,

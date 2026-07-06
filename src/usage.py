@@ -1,16 +1,29 @@
 import sqlite3
 import time
 import json
+import os
+import stat
 from pathlib import Path
 from datetime import datetime
 
 _DB_PATH = Path(__file__).resolve().parents[1] / "usage.db"
 
 
+def _set_private_perms(path: Path):
+    try:
+        current = stat.S_IMODE(os.stat(path).st_mode)
+        private = stat.S_IRUSR | stat.S_IWUSR
+        if current & 0o077 != 0:
+            os.chmod(path, private)
+    except OSError:
+        pass
+
+
 def _get_conn():
     conn = sqlite3.connect(str(_DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    _set_private_perms(_DB_PATH)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS predictions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
