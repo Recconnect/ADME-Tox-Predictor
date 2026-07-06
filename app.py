@@ -193,10 +193,10 @@ def compute_health_score(result: dict) -> tuple[int, str]:
     return pct, level
 
 
-def _prop_to_pct(key: str, result: dict) -> int:
+def _prop_to_pct(key: str, result: dict) -> int | None:
     val = result.get(key)
-    if val is None:
-        return 50
+    if val is None or not isinstance(val, (int, float)):
+        return None
     ranges = {
         "Solubility (logS)": (-8, 2),
         "Caco-2 Permeability": (0, 1),
@@ -272,7 +272,7 @@ with tab1:
     chips_cols = st.columns(4)
     example_drugs = {"Aspirin": VALIDATION_DRUGS["Aspirin"], "Caffeine": VALIDATION_DRUGS["Caffeine"], "Ibuprofen": VALIDATION_DRUGS["Ibuprofen"], "Paracetamol": VALIDATION_DRUGS["Paracetamol"]}
     for i, (name, smi) in enumerate(example_drugs.items()):
-        if chips_cols[i % 4].button(name, key=f"chip_{name}", use_container_width=True):
+        if chips_cols[i % 4].button(name, key=f"chip_{name}", width="stretch"):
             st.session_state["single_smiles"] = smi
             st.rerun()
 
@@ -335,12 +335,15 @@ with tab1:
                             bg_color = color_class(str(val)) if is_class else "#1a5276"
                             display = f"{val:.3f}" if isinstance(val, float) else str(val)
                             label = translate_prop_name(key, lang)
+                            progress = (
+                                f'<div class="progress-bg"><div class="progress-fill" '
+                                f'style="width:{pct_val}%;background:{bg_color}"></div></div>'
+                            ) if pct_val is not None else ""
                             st.markdown(
                                 f'<div class="adme-card" style="border-left-color:{bg_color}">'
                                 f'<div class="label">{label}</div>'
                                 f'<div class="value" style="color:{bg_color}">{display}</div>'
-                                f'<div class="progress-bg"><div class="progress-fill" style="width:{pct_val}%;background:{bg_color}"></div></div>'
-                                f"</div>",
+                                f"{progress}</div>",
                                 unsafe_allow_html=True,
                             )
 
@@ -501,7 +504,7 @@ with tab4:
         ):
             df = pd.DataFrame(imp["descriptor_importance"])
             df.columns = [t("fi_col_name", lang), t("fi_col_importance", lang)]
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width="stretch")
             st.caption(t("fi_caption", lang, value=f"{imp['fingerprint_total_importance']:.2f}"))
 
 # ───────── Sidebar ─────────
