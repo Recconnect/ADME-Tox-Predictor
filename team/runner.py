@@ -126,11 +126,11 @@ if __name__ == "__main__":
     elif "--strategy" in sys.argv:
         run_all()
         print()
-        print("─" * 65)
+        print("-" * 65)
         print("  Generating GTM Strategy...")
         from team.agent_strategist import StrategistAgent
         strat = StrategistAgent()
         path = strat.run()
-        print(f"  → {path}")
+        print(f"  -> {path}")
     else:
         run_all()

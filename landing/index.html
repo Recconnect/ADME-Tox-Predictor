@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADMETox.AI — AI-скрининг ADME/Tox для drug discovery</title>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --primary-dark: #1557b0;
+    --accent: #34a853;
+    --warning: #fbbc04;
+    --danger: #ea4335;
+    --bg: #ffffff;
+    --bg-alt: #f8f9fa;
+    --text: #202124;
+    --text-secondary: #5f6368;
+    --border: #dadce0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  nav .logo { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+  nav .logo span { color: var(--text); }
+  nav .nav-links { display: flex; gap: 24px; align-items: center; }
+  nav .nav-links a { text-decoration: none; color: var(--text-secondary); font-size: 0.95rem; font-weight: 500; }
+  nav .nav-links a:hover { color: var(--primary); }
+  .btn {
+    display: inline-block; padding: 10px 24px; border-radius: 8px;
+    font-weight: 600; font-size: 0.95rem; text-decoration: none;
+    transition: all 0.2s ease; cursor: pointer; border: none;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+  .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-outline:hover { background: var(--primary); color: #fff; }
+
+  .hero {
+    padding: 100px 0 80px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    text-align: center;
+  }
+  .hero h1 { font-size: 3rem; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+  .hero h1 span { color: var(--primary); }
+  .hero p { font-size: 1.2rem; color: var(--text-secondary); max-width: 700px; margin: 0 auto 32px; }
+  .hero .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .hero .cta-buttons .btn { min-width: 200px; text-align: center; }
+
+  .section { padding: 80px 0; }
+  .section-alt { background: var(--bg-alt); }
+  .section h2 { font-size: 2rem; font-weight: 700; text-align: center; margin-bottom: 48px; }
+  .section h2 span { color: var(--primary); }
+
+  .grid { display: grid; gap: 32px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--bg); border-radius: var(--radius); padding: 32px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .card h3 { font-size: 1.2rem; margin-bottom: 12px; }
+  .card p { color: var(--text-secondary); font-size: 0.95rem; }
+  .card .icon { font-size: 2rem; margin-bottom: 12px; display: block; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-top: 32px; }
+  .metric-card {
+    text-align: center; padding: 24px; background: var(--bg);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .metric-card .value { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+  .metric-card .label { font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; }
+  .metric-card .status { font-size: 0.8rem; margin-top: 4px; font-weight: 600; }
+  .status-ok { color: var(--accent); }
+  .status-warn { color: var(--warning); }
+
+  .price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 32px; }
+  .price-card {
+    text-align: center; padding: 40px 24px; background: var(--bg);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    border: 1px solid var(--border); position: relative;
+  }
+  .price-card.featured { border: 2px solid var(--primary); }
+  .price-card .badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--primary); color: #fff; padding: 4px 16px;
+    border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+  }
+  .price-card .price { font-size: 2rem; font-weight: 800; margin: 16px 0; }
+  .price-card .price span { font-size: 0.9rem; color: var(--text-secondary); font-weight: 400; }
+  .price-card ul { list-style: none; text-align: left; margin: 24px 0; }
+  .price-card ul li { padding: 8px 0; font-size: 0.9rem; }
+  .price-card ul li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-top: 32px; }
+  .step { text-align: center; padding: 24px; }
+  .step .number {
+    width: 48px; height: 48px; line-height: 48px; border-radius: 50%;
+    background: var(--primary); color: #fff; font-weight: 700;
+    margin: 0 auto 16px; font-size: 1.2rem;
+  }
+  .step h3 { margin-bottom: 8px; }
+  .step p { color: var(--text-secondary); font-size: 0.9rem; }
+
+  footer { background: var(--text); color: #fff; padding: 40px 0; text-align: center; }
+  footer p { color: #9aa0a6; font-size: 0.9rem; }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 2rem; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .hero .cta-buttons { flex-direction: column; align-items: center; }
+    nav .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">ADMETox<span>.AI</span></div>
+  <div class="nav-links">
+    <a href="#problem">Проблема</a>
+    <a href="#solution">Решение</a>
+    <a href="#metrics">Метрики</a>
+    <a href="#pricing">Цены</a>
+    <a href="#contacts">Контакты</a>
+    <a href="https://github.com/bradist/ADME-Tox-Predictor" target="_blank" class="btn btn-outline">GitHub</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <h1>AI-скрининг <span>ADME/Tox</span> для drug discovery</h1>
+    <p>Предсказывайте растворимость, проницаемость и токсичность молекул за секунды — до того, как потратите миллионы на синтез.</p>
+    <div class="cta-buttons">
+      <a href="http://localhost:8501" target="_blank" class="btn btn-primary">Попробовать демо</a>
+      <a href="#pricing" class="btn btn-outline">Для бизнеса</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="problem">
+  <div class="container">
+    <h2>90% кандидатов проваливаются <span>в клинике</span></h2>
+    <div class="grid grid-3">
+      <div class="card">
+        <span class="icon">💊</span>
+        <h3>Eroom's Law</h3>
+        <p>Эффективность R&D падает вдвое каждые 9 лет. Традиционный подход больше не работает.</p>
+      </div>
+      <div class="card">
+        <span class="icon">💰</span>
+        <h3>$2.23 млрд на препарат</h3>
+        <p>60% бюджета уходит на lead optimization — синтез молекул, которые отсеются на ADME/Tox.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🔬</span>
+        <h3>Синтез vs. Скрининг</h3>
+        <p>Химики синтезируют тысячи молекул, чтобы найти 1-2 кандидата. 90% отсев — из-за ADME/Tox.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="solution">
+  <div class="container">
+    <h2>Как работает <span>ADMETox.AI</span></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="number">1</div>
+        <h3>Введите SMILES</h3>
+        <p>Одну молекулу или загрузите CSV с тысячами</p>
+      </div>
+      <div class="step">
+        <div class="number">2</div>
+        <h3>AI-анализ</h3>
+        <p>30 дескрипторов + 2048 Morgan fingerprints + LightGBM</p>
+      </div>
+      <div class="step">
+        <div class="number">3</div>
+        <h3>Результат за 1 сек</h3>
+        <p>Растворимость, Caco-2, hERG + все RDKit-дескрипторы</p>
+      </div>
+      <div class="step">
+        <div class="number">4</div>
+        <h3>Примите решение</h3>
+        <p>Какие молекулы синтезировать, какие отбросить</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="metrics">
+  <div class="container">
+    <h2>Метрики <span>моделей</span></h2>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="value">0.806</div>
+        <div class="label">Solubility R²</div>
+        <div class="status status-ok">✓ выше target (0.6)</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">0.932</div>
+        <div class="label">Caco-2 AUC</div>
+        <div class="status status-ok">✓ выше target (0.7)</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">0.846</div>
+        <div class="label">hERG AUC</div>
+        <div class="status status-ok">✓ выше target (0.7)</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">31/31</div>
+        <div class="label">Тесты пройдены</div>
+        <div class="status status-ok">✓ 100% pass</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top: 32px;">
+      <p style="color: var(--text-secondary);">Валидирована на 10 известных препаратах (Аспирин, Ибупрофен, Парацетамол, Кофеин и др.)</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="pricing">
+  <div class="container">
+    <h2>Начните <span>бесплатно</span></h2>
+    <div class="price-grid">
+      <div class="price-card">
+        <h3>Free</h3>
+        <div class="price">0 ₽<span>/мес</span></div>
+        <ul>
+          <li>100 предсказаний/месяц</li>
+          <li>Базовые свойства (3 модели)</li>
+          <li>Web-интерфейс</li>
+          <li>CSV-экспорт</li>
+        </ul>
+        <a href="http://localhost:8501" target="_blank" class="btn btn-primary">Попробовать</a>
+      </div>
+      <div class="price-card featured">
+        <div class="badge">Рекомендуем</div>
+        <h3>Starter</h3>
+        <div class="price">10 000 $<span>/год</span></div>
+        <ul>
+          <li>10 000 предсказаний/год</li>
+          <li>Все ADME/Tox свойства</li>
+          <li>Email support</li>
+          <li>Batch-обработка</li>
+          <li>Лицензия на 1 проект</li>
+        </ul>
+        <a href="#contacts" class="btn btn-primary">Связаться</a>
+      </div>
+      <div class="price-card">
+        <h3>Enterprise</h3>
+        <div class="price">50 000 $<span>/год</span></div>
+        <ul>
+          <li>Неограниченно предсказаний</li>
+          <li>Dedicated instance</li>
+          <li>Fine-tuning на ваших данных</li>
+          <li>API + SLA 99.9%</li>
+          <li>Приоритетная поддержка</li>
+        </ul>
+        <a href="#contacts" class="btn btn-primary">Связаться</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contacts">
+  <div class="container" style="text-align:center; max-width: 600px;">
+    <h2>Готовы к <span>пилоту?</span></h2>
+    <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 1.1rem;">
+      Предложим бесплатный пилот на ваших молекулах. Результат — через 30 дней.
+    </p>
+    <div style="background: var(--bg-alt); padding: 32px; border-radius: var(--radius); border: 1px solid var(--border);">
+      <p style="margin-bottom: 12px;"><strong>Telegram:</strong> @admetox_bot</p>
+      <p style="margin-bottom: 12px;"><strong>Email:</strong> hello@admetox.ai</p>
+      <p><strong>GitHub:</strong> <a href="https://github.com/bradist/ADME-Tox-Predictor" target="_blank" style="color: var(--primary);">github.com/bradist/ADME-Tox-Predictor</a></p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>ADMETox.AI — AI-скрининг ADME/Tox для российских CRO и фармкомпаний</p>
+    <p style="margin-top: 8px;">&copy; 2026 ADMETox.AI. Все права защищены.</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -9,15 +9,45 @@ from src.predict import ADMETPredictor
 from src.features import compute_rdkit_descriptors
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 
+
+def check_lipinski_rule_of_five(desc: dict | None) -> dict:
+    if desc is None:
+        return {"passed": False, "violations": [], "detail": "No descriptors"}
+    violations = []
+    if desc.get("MolWt", 0) > 500:
+        violations.append(f"MolWt={desc['MolWt']:.0f} > 500")
+    if desc.get("LogP", 0) > 5:
+        violations.append(f"LogP={desc['LogP']:.2f} > 5")
+    if desc.get("NumHDonors", 0) > 5:
+        violations.append(f"HDonors={desc['NumHDonors']} > 5")
+    if desc.get("NumHAcceptors", 0) > 10:
+        violations.append(f"HAcceptors={desc['NumHAcceptors']} > 10")
+    return {
+        "passed": len(violations) == 0,
+        "violations": violations,
+        "detail": f"{len(violations)} violation(s): " + "; ".join(violations) if violations else "Passes Lipinski Rule of Five",
+    }
+
+
+def color_class(val: str) -> str:
+    good = {"Soluble", "High permeability", "Safe (low risk)"}
+    bad = {"Poorly soluble", "Low permeability", "Toxic (high risk)"}
+    if val in good:
+        return "#00c853"
+    if val in bad:
+        return "#ff1744"
+    return "#ffc107"
+
+
 st.set_page_config(
-    page_title="ADME/Tox Predictor v2.0",
+    page_title="ADMETox.AI",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("ADME/Tox Predictor v2.0")
-st.markdown("AI-powered ADME/Tox screening for drug discovery")
+st.title("ADME/Tox Predictor")
+st.markdown("AI-powered ADME/Tox screening for drug discovery. [ADMETox.AI](https://admetox.ai)")
 
 @st.cache_resource
 def get_predictor():
@@ -65,8 +95,28 @@ with tab1:
                 if key in result:
                     with prop_cols[col_idx % 3]:
                         val = result[key]
-                        st.metric(key, f"{val:.3f}" if isinstance(val, float) else str(val))
+                        display = f"{val:.3f}" if isinstance(val, float) else str(val)
+                        if "Class" in key:
+                            bg = color_class(str(val))
+                            st.markdown(
+                                f'<div style="padding:12px;border-radius:8px;background:{bg}20;'
+                                f'border-left:4px solid {bg}">'
+                                f'<small>{key}</small><br><strong>{display}</strong></div>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.metric(key, display)
                     col_idx += 1
+
+            lipinski = check_lipinski_rule_of_five(
+                {k: v for k, v in result.items() if k in {
+                    "MolWt", "LogP", "NumHDonors", "NumHAcceptors",
+                }}
+            )
+            if not lipinski["passed"]:
+                st.warning(f"Lipinski Rule of Five: {lipinski['detail']}")
+            else:
+                st.info(f"Lipinski Rule of Five: {lipinski['detail']}")
 
             with st.expander("View all RDKit descriptors"):
                 desc_keys = [
@@ -99,7 +149,12 @@ with tab2:
                 results = predictor.predict_batch(smiles_list)
             df = pd.DataFrame(results)
             df.insert(0, "SMILES", smiles_list[:len(df)])
-            st.dataframe(df, width="stretch")
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+                if col in df.columns:
+                    df[col] = df[col].apply(
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                    )
+            st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 "Download CSV", df.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
@@ -125,7 +180,12 @@ with tab2:
                 results = predictor.predict_batch(smiles_list)
             df_output = pd.DataFrame(results)
             df_output.insert(0, "SMILES", smiles_list[:len(df_output)])
-            st.dataframe(df_output, width="stretch")
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+                if col in df_output.columns:
+                    df_output[col] = df_output[col].apply(
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                    )
+            st.markdown(df_output.to_html(escape=False, index=False), unsafe_allow_html=True)
             st.download_button(
                 "Download CSV", df_output.to_csv(index=False).encode("utf-8"),
                 "predictions.csv", "text/csv",
@@ -145,7 +205,13 @@ with tab3:
                 "hERG Toxicity Risk", "hERG Class",
             ]
             display_cols = [c for c in display_cols if c in df_val.columns]
-            st.dataframe(df_val[display_cols], width="stretch")
+            df_display = df_val[display_cols].copy()
+            for col in ["SolubilityClass", "Caco-2 Class", "hERG Class"]:
+                if col in df_display.columns:
+                    df_display[col] = df_display[col].apply(
+                        lambda v: f'<span style="color:{color_class(str(v))};font-weight:700">{v}</span>'
+                    )
+            st.markdown(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 
             summary = {}
             if "Solubility (logS)" in df_val.columns:
@@ -165,16 +231,24 @@ with tab3:
             )
 
 with st.sidebar:
-    st.header("About")
+    st.header("About ADMETox.AI")
     st.markdown("""
-**ADME/Tox Predictor v2.0**
+**AI-powered ADME/Tox screening**
 
-Predicts:
-- Solubility (R²=0.826)
-- Caco-2 Permeability (Acc=83%)
-- hERG Toxicity (AUC=0.873)
+| Property | Metric |
+|---|---|
+| Solubility | R² = **0.806** |
+| Caco-2 | AUC = **0.932** |
+| hERG | AUC = **0.846** |
 
-Built with LightGBM + RDKit descriptors
+Built with LightGBM + RDKit
+""")
+    st.header("Lipinski Rule of Five")
+    st.markdown("""
+- MolWt < 500
+- LogP < 5
+- H-Donors < 5
+- H-Acceptors < 10
 """)
     st.header("Example SMILES")
     st.code("Ethanol: CCO\nAspirin: CC(=O)Oc1ccccc1C(=O)O\nCaffeine: CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
