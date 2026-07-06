@@ -2,9 +2,10 @@
 Audit Runner — запускает всех агентов команды последовательно.
 
 Usage:
-    python -m team.runner              # полный аудит
-    python -m team.runner --quick      # только вывод сводки (без генерации отчётов)
-    python -m team.runner --agent=team_lead  # запустить одного агента
+    python -m team.runner                     # полный аудит
+    python -m team.runner --strategy          # аудит + GTM стратегия
+    python -m team.runner --quick             # только вывод сводки (без генерации отчётов)
+    python -m team.runner --agent=team_lead   # запустить одного агента
 """
 
 import sys
@@ -122,5 +123,14 @@ if __name__ == "__main__":
             if isinstance(obj, type) and "Agent" in name and name != "BaseAgent":
                 run_agent(obj)
                 break
+    elif "--strategy" in sys.argv:
+        run_all()
+        print()
+        print("─" * 65)
+        print("  Generating GTM Strategy...")
+        from team.agent_strategist import StrategistAgent
+        strat = StrategistAgent()
+        path = strat.run()
+        print(f"  → {path}")
     else:
         run_all()
