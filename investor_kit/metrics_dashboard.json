@@ -1,0 +1,83 @@
+{
+  "version": "2.0",
+  "generated": "2026-07-06",
+  "product": {
+    "name": "ADME/Tox Predictor",
+    "type": "AI SaaS for ADME/Tox screening",
+    "stage": "MVP ready",
+    "funding_stage": "Seed",
+    "funding_ask_usd": 350000
+  },
+  "models": {
+    "solubility": {
+      "dataset": "AqSolDB",
+      "size": 9980,
+      "task": "regression",
+      "test_r2": 0.806,
+      "test_mae": 0.706,
+      "target_r2": 0.6,
+      "exceeded_by_percent": 34.3,
+      "status": "exceeded"
+    },
+    "caco2": {
+      "dataset": "Wang et al. (Caco-2)",
+      "size": 906,
+      "task": "classification",
+      "test_acc": 0.856,
+      "test_auc": 0.932,
+      "target_acc": 0.75,
+      "exceeded_by_percent": 14.1,
+      "status": "exceeded"
+    },
+    "herg": {
+      "dataset": "TDC hERG",
+      "size": 648,
+      "task": "classification",
+      "test_acc": 0.822,
+      "test_auc": 0.846,
+      "target_auc": 0.7,
+      "exceeded_by_percent": 20.9,
+      "status": "exceeded"
+    }
+  },
+  "business_case": {
+    "market_tam_2025_b": 3.5,
+    "market_tam_2028_b": 7.6,
+    "market_cagr_percent": 30,
+    "target_niche": "Lead Optimization (60% of pharma R&D)",
+    "drug_development_cost_b": 2.23,
+    "pharma_r_and_d_spend_2025_b": 265,
+    "budget_lead_optimization_percent": 60,
+    "client_roi": "10x-50x on subscription",
+    "savings_per_program": "1-5M USD"
+  },
+  "revenue_model": {
+    "type": "SaaS/API",
+    "price_tier_1_usd": 10000,
+    "price_tier_2_usd": 50000,
+    "price_tier_enterprise_usd": 100000,
+    "target_customers": ["CRO", "Biotech startups", "Pharma R&D"],
+    "estimated_arr_year_1": 150000,
+    "estimated_arr_year_2": 750000,
+    "estimated_arr_year_3": 3000000
+  },
+  "competitive_landscape": {
+    "direct_competitors": ["ChemAxon"],
+    "indirect_competitors": ["Schrodinger", "BIOptIC", "Isomorphic Labs"],
+    "our_advantage": "Specialized ADME/Tox, 10x cheaper, immediate value",
+    "exit_targets": ["Schrodinger", "Charles River", "Benchling", "LabCorp"]
+  },
+  "metrics": {
+    "prediction_time_sec": 0.5,
+    "mvp_age_weeks": 2,
+    "test_coverage": 31,
+    "validation_drugs": 10,
+    "teamsize": 1,
+    "lines_of_code": 2600
+  },
+  "roadmap": {
+    "phase_1_mvp": {"status": "done", "duration": "2-4 weeks", "features": ["3 LightGBM models", "Streamlit UI", "Validation on 10 drugs"]},
+    "phase_2_pilot": {"status": "next", "duration": "2-3 months", "features": ["GNN (+5-10%)", "API", "1-2 CRO pilots"]},
+    "phase_3_scale": {"status": "planned", "duration": "6-12 months", "features": ["5+ properties", "Enterprise SaaS", "Proprietary data pipeline"]}
+  }
+}
