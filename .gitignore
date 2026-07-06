@@ -48,3 +48,10 @@ users.json
 
 # Streamlit (keep config.toml, ignore cache)
 .streamlit/secrets.toml
+
+# Agents
+agents/.env
+agents/.secrets.env
+agents/logs/
+agents/data/*.db
+agents/data/articles/

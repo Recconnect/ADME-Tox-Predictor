@@ -1,0 +1,44 @@
+# ADMETox.AI Outreach Agents Configuration
+
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  max_tokens: 2000
+  temperature: 0.7
+
+github:
+  owner: Recconnect
+  repo: ADME-Tox-Predictor
+  # token: from .env (GITHUB_TOKEN)
+
+email:
+  # smtp_host: auto-detected from email domain
+  smtp_port: 587
+  # username: from .env (EMAIL_USER)
+  # password: from .env (EMAIL_PASSWORD)
+  from_name: "ADMETox.AI Team"
+
+investors:
+  max_emails_per_day: 5
+  followup_days: [7, 14, 30]
+  csv_path: data/investors.csv
+
+content:
+  frequency: weekly
+  day: monday
+  time: "09:00"
+  articles_dir: data/articles
+
+metrics:
+  report_frequency: weekly
+  report_day: sunday
+  report_time: "20:00"
+  report_email: your_email@example.com
+
+schedule:
+  github_release: "daily 10:00"
+  issue_responses: "daily 10:05"
+  article_writing: "monday 09:00"
+  investor_outreach: "monday-friday 11:00"
+  investor_followup: "friday 14:00"
+  weekly_report: "sunday 20:00"

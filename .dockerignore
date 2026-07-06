@@ -13,6 +13,7 @@ promo/
 *.md
 LICENSE
 .env
+agents/
 **/__pycache__/
 .pytest_cache/
 .gitignore
