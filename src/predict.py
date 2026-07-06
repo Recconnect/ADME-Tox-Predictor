@@ -9,6 +9,7 @@ from src.features import (
     get_feature_names,
     feature_dimension,
 )
+from src.feature_importance import get_model_feature_importance
 from src.models import load_model
 from src.config import MODELS_DIR, logger, MAX_BATCH_SIZE
 
@@ -36,6 +37,15 @@ class ADMETPredictor:
     @property
     def is_ready(self) -> bool:
         return len(self.models) >= 3
+
+    @property
+    def feature_importances(self) -> dict:
+        result = {}
+        for key in self.models:
+            imp = get_model_feature_importance(key)
+            if imp:
+                result[key] = imp
+        return result
 
     def _validate_feature(self, feat: np.ndarray) -> np.ndarray:
         if self._expected_dim is not None and feat.shape[-1] != self._expected_dim:

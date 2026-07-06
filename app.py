@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.predict import ADMETPredictor
 from src.features import compute_rdkit_descriptors
+from src.feature_importance import get_model_feature_importance
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 
 
@@ -63,7 +64,7 @@ predictor = get_predictor()
 if not predictor.is_ready:
     st.stop()
 
-tab1, tab2, tab3 = st.tabs(["Single Prediction", "Batch Prediction", "Validation"])
+tab1, tab2, tab3, tab4 = st.tabs(["Single Prediction", "Batch Prediction", "Validation", "Feature Importance"])
 
 with tab1:
     st.header("Single Molecule Prediction")
@@ -229,6 +230,27 @@ with tab3:
                 df_val.to_csv(index=False).encode("utf-8"),
                 "validation_results.csv", "text/csv",
             )
+
+with tab4:
+    st.header("Feature Importance")
+    st.markdown("Top-10 RDKit descriptors driving each model's predictions:")
+
+    model_names = {
+        "solubility": "Solubility (logS)",
+        "caco2": "Caco-2 Permeability",
+        "herg": "hERG Toxicity",
+    }
+
+    for key, label in model_names.items():
+        imp = get_model_feature_importance(key)
+        if imp is None:
+            st.warning(f"Feature importance not available for {label}")
+            continue
+        with st.expander(f"{label} — Top 10 Descriptors", expanded=False):
+            df = pd.DataFrame(imp["descriptor_importance"])
+            df.columns = ["Descriptor", "Importance"]
+            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.caption(f"Fingerprint total importance: {imp['fingerprint_total_importance']:.2f}")
 
 with st.sidebar:
     st.header("About ADMETox.AI")
