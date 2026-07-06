@@ -164,11 +164,14 @@ agents/
 | Задача | Частота | Описание |
 |--------|---------|----------|
 | GitHub release | ежедневно 10:00 | Changelog + release при коммитах |
-| Автоответы на issues | ежедневно 10:05 | Шаблонные ответы через LLM |
+| Автоответы на issues | ежедневно 10:00 | Шаблонные ответы через LLM |
+| Сбор feedback | ежедневно 10:00 | Из GitHub issues, классификация |
+| Отслеживание конференций | ежедневно 10:00 | 10 конференций, дедлайны CFP |
 | Генерация статьи | понедельник 09:00 | Статья для Medium/Habr/VC.ru |
-| Outreach инвесторам | пн-пт 11:00 | Макс 5 писем/день |
-| Follow-up инвесторам | пятница 14:00 | Напоминания через 7 дней |
-| Еженедельный отчёт | воскресенье 20:00 | Метрики + email на your_email@example.com |
+| Outreach инвесторам | понедельник 09:00 | Макс 5 писем/неделю |
+| Follow-up инвесторам | понедельник 09:00 | Напоминания через 7 дней |
+| Публикация в соцсети | понедельник 09:00 | LinkedIn, Twitter, Medium |
+| Еженедельный отчёт | понедельник 09:00 | Метрики + email на your_email@example.com |
 
 ### Команды запуска
 
@@ -176,15 +179,20 @@ agents/
 # Ярлык запуска (Windows)
 agents\start.bat
 
-# Или вручную:
-cd agents
-python coordinator.py release      # GitHub release
-python coordinator.py article      # Генерация статьи
-python coordinator.py outreach     # Outreach инвесторам
-python coordinator.py followup     # Follow-up
-python coordinator.py metrics      # Сбор метрик
-python coordinator.py all          # Все задачи
-python coordinator.py schedule     # Режим планировщика
+# Показать статус всех агентов
+python -m coordinator.coordinator status
+
+# Запустить ежедневные задачи
+python -m coordinator.coordinator daily
+
+# Запустить еженедельные задачи
+python -m coordinator.coordinator weekly
+
+# Запустить все задачи
+python -m coordinator.coordinator all
+
+# Запустить планировщик (постоянная работа)
+python -m coordinator.coordinator schedule
 ```
 
 ### Настройка
@@ -204,10 +212,12 @@ python coordinator.py schedule     # Режим планировщика
 | Email (Яндекс.Почта) | Бесплатно |
 | **Итого** | **~$5/мес** |
 
-### Инвесторы
+### Агенты (7 штук)
 
-База `data/investors.csv` содержит 70+ биотех/healthtech инвесторов:
-- Deep Knowledge Ventures, Insilico Medicine, J&J Innovation
-- Third Rock Ventures, Flagship Pioneering, a16z
-- Sequoia Capital, Khosla Ventures, Founders Fund
-- И другие (полный список в CSV)
+1. **GitHub Agent** — автогенерация changelog, release, автоответы на issues
+2. **Content Agent** — генерация статей через LLM (6 тем)
+3. **Investor Agent** — email outreach 66 инвесторам, follow-up
+4. **Feedback Agent** — сбор обратной связи из GitHub, классификация
+5. **Conference Agent** — отслеживание 10 конференций, дедлайны CFP
+6. **Social Media Agent** — генерация постов для LinkedIn, Twitter, Medium
+7. **Metrics Agent** — сбор метрик, еженедельные отчёты
