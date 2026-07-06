@@ -11,6 +11,7 @@ from src.feature_importance import get_model_feature_importance
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 from src.i18n import t, translate_class, translate_prop_name, translate_model_name, get_lang, sidebar_lang_selector
 from src.usage import get_stats
+from src.radar import compute_scores, plot_radar
 
 
 def draw_molecule(smiles: str) -> str | None:
@@ -162,6 +163,12 @@ with tab1:
                 st.warning(msg)
             else:
                 st.info(msg)
+
+            scores = compute_scores({k: v for k, v in result.items() if isinstance(v, (int, float))})
+            if any(s > 0 for s in scores):
+                fig = plot_radar(scores, lang)
+                st.caption(t("radar_title", lang))
+                st.pyplot(fig)
 
             with st.expander(t("single_expander", lang)):
                 prop_keys_set = set([
