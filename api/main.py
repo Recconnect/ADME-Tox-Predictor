@@ -30,10 +30,12 @@ from src.predict import ADMETPredictor
 from src.features import canonicalize_smiles
 from src.config import VALIDATION_DRUGS, MODELS_DIR, logger
 from src.auth import register_user, authenticate_user, verify_token as verify_jwt_token
+from src.usage import log_prediction, get_stats
 from api.schemas import (
     PredictRequest, PredictResponse, PropertyResult,
     BatchPredictRequest, BatchPredictResponse,
     HealthResponse, RegisterRequest, LoginRequest, AuthResponse,
+    UsageStatsResponse,
 )
 
 _START_TIME = time.time()
@@ -169,7 +171,19 @@ def health_check():
 @app.post("/predict", response_model=PredictResponse, tags=["Prediction"])
 @limiter.limit("60/minute")
 def predict_single(request: Request, req: PredictRequest, _: None = Depends(verify_api_key)):
-    return _do_predict(req.smiles)
+    t0 = time.time()
+    result = _do_predict(req.smiles)
+    latency = (time.time() - t0) * 1000
+    username = getattr(request.state, "user", None)
+    log_prediction(
+        username=username,
+        smiles=req.smiles,
+        canonical_smiles=result.canonical_smiles,
+        properties={p.name: p.value for p in result.properties} if result.properties else None,
+        error=result.error,
+        latency_ms=latency,
+    )
+    return result
 
 
 @app.post("/batch", response_model=BatchPredictResponse, tags=["Prediction"])
@@ -181,8 +195,19 @@ def predict_batch(request: Request, req: BatchPredictRequest, _: None = Depends(
 
     results = []
     failed = 0
+    username = getattr(request.state, "user", None)
     for smi in req.smiles:
+        t0 = time.time()
         r = _do_predict(smi)
+        latency = (time.time() - t0) * 1000
+        log_prediction(
+            username=username,
+            smiles=smi,
+            canonical_smiles=r.canonical_smiles,
+            properties={p.name: p.value for p in r.properties} if r.properties else None,
+            error=r.error,
+            latency_ms=latency,
+        )
         results.append(r)
         if r.error:
             failed += 1
@@ -214,6 +239,12 @@ def login(request: Request, req: LoginRequest):
     if not token:
         raise HTTPException(401, "Invalid username or password")
     return AuthResponse(access_token=token, username=req.username)
+
+
+@app.get("/admin/usage", response_model=UsageStatsResponse, tags=["Admin"])
+def admin_usage(days: int = 7):
+    stats = get_stats(days)
+    return UsageStatsResponse(**stats)
 
 
 @app.get("/validate", response_model=list[PredictResponse], tags=["Prediction"])

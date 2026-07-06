@@ -10,6 +10,7 @@ from src.features import compute_rdkit_descriptors, canonicalize_smiles
 from src.feature_importance import get_model_feature_importance
 from src.config import VALIDATION_DRUGS, logger, MAX_UPLOAD_MB
 from src.i18n import t, translate_class, translate_prop_name, translate_model_name, get_lang, sidebar_lang_selector
+from src.usage import get_stats
 
 
 def draw_molecule(smiles: str) -> str | None:
@@ -332,3 +333,15 @@ with st.sidebar:
     st.markdown(t("sidebar_lipinski_rules", lang))
     st.header(t("sidebar_examples", lang))
     st.code(t("sidebar_examples_code", lang))
+
+    with st.expander(t("usage_title", lang)):
+        try:
+            stats = get_stats(30)
+            st.metric(t("usage_total", lang), stats["total_predictions"])
+            st.metric(t("usage_7d", lang), stats["predictions_7d"])
+            if stats["unique_users"]:
+                st.metric(t("usage_users", lang), stats["unique_users"])
+            if stats["avg_latency_ms"]:
+                st.metric(t("usage_latency", lang), f"{stats['avg_latency_ms']:.0f} ms")
+        except Exception:
+            pass

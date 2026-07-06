@@ -53,3 +53,14 @@ class AuthResponse(BaseModel):
     token_type: str = "bearer"
     username: str
     role: str = "user"
+
+
+class UsageStatsResponse(BaseModel):
+    total_predictions: int
+    predictions_7d: int
+    errors: int
+    unique_users: int
+    unique_smiles: int
+    avg_latency_ms: float
+    top_users: list[dict]
+    hourly_7d: list[dict]
