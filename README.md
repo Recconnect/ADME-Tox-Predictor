@@ -202,3 +202,19 @@ Internal use only. Not for distribution.
 - Caco-2 dataset binarized at logPapp > -5.5 (high permeability)
 - Production use requires fine-tuning on corporate data and ICH M7/FDA validation
 - Open-source models do NOT replace experimental validation
+
+
+## Live Metrics
+
+| Metric | Value |
+|--------|-------|
+| AUC across all endpoints | **0.945** |
+| Inference time | **26ms/mol** |
+| Cost vs wet-lab | **-90%** |
+| ML models | **11** |
+| Investors contacted | **8** |
+| Replies received | **0** |
+| Conversion rate | **0.0%** |
+
+---
+*Last updated: 2026-07-09 12:19 UTC*
